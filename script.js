@@ -1,3 +1,24 @@
+// fetch wrapper that falls back to XMLHttpRequest for file:// URLs
+function loadJSON(url) {
+    return new Promise((resolve, reject) => {
+        if (window.location.protocol !== 'file:') {
+            fetch(url).then(r => {
+                if (!r.ok) throw new Error(r.status);
+                return r.json();
+            }).then(resolve, reject);
+            return;
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onload = () => {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch (e) { reject(e); }
+        };
+        xhr.onerror = () => reject(new Error('XHR failed'));
+        xhr.send();
+    });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     checkLatestRelease();
 
@@ -5,8 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let apps;
     try {
-        const response = await fetch('apps-metadata.json');
-        apps = await response.json();
+        apps = await loadJSON('apps-metadata.json');
     } catch {
         appsList.innerHTML = '<p class="no-apps">Could not load apps.</p>';
         return;
@@ -127,12 +147,27 @@ function closeOverlay() {
     document.body.style.overflow = '';
 }
 
+function loadText(url) {
+    return new Promise((resolve, reject) => {
+        if (window.location.protocol !== 'file:') {
+            fetch(url).then(r => {
+                if (!r.ok) throw new Error(r.status);
+                return r.text();
+            }).then(resolve, reject);
+            return;
+        }
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onload = () => resolve(xhr.responseText);
+        xhr.onerror = () => reject(new Error('XHR failed'));
+        xhr.send();
+    });
+}
+
 async function showMarkdown(title, url) {
     openOverlay(title, '<p class="overlay-loading">Loading...</p>');
     try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Not found');
-        const text = await response.text();
+        const text = await loadText(url);
         document.getElementById('overlay-body').innerHTML = renderMarkdown(text);
     } catch {
         document.getElementById('overlay-body').innerHTML =
