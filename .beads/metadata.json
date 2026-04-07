@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "PARANOID",
+  "project_id": "32e5b3ea-b666-48cf-b820-8e7f568d4702"
+}
