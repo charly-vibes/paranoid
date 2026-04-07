@@ -1,4 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
+    checkLatestRelease();
+
     const appsList = document.getElementById('apps-list');
 
     let apps;
@@ -74,6 +76,26 @@ function formatAppName(name) {
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ');
+}
+
+// --- Install banner ---
+
+async function checkLatestRelease() {
+    const banner = document.getElementById('install-banner');
+    const versionEl = document.getElementById('install-version');
+    try {
+        const res = await fetch('https://api.github.com/repos/charly-vibes/paranoid/releases/latest');
+        if (!res.ok) return;
+        const release = await res.json();
+        const apk = release.assets.find(a => a.name.endsWith('.apk'));
+        if (apk) {
+            banner.href = apk.browser_download_url;
+            versionEl.textContent = release.tag_name;
+            banner.style.display = 'flex';
+        }
+    } catch {
+        // No release yet or offline — banner stays hidden
+    }
 }
 
 // --- Overlay / Markdown viewer ---

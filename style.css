@@ -31,6 +31,34 @@ h1 {
     margin-bottom: 2rem;
 }
 
+.install-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem;
+    margin-bottom: 1.5rem;
+    background: #1a2a1a;
+    border: 1px solid #2a3a2a;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #8c8;
+    transition: background 0.15s;
+}
+
+.install-banner:active {
+    background: #243424;
+}
+
+.install-text {
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.install-version {
+    font-size: 0.8rem;
+    color: #686;
+}
+
 #apps-list {
     margin-top: 1rem;
 }
