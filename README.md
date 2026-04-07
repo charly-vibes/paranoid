@@ -2,7 +2,7 @@
 
 [![tracked with wai](https://img.shields.io/badge/tracked%20with-wai-blue)](https://github.com/charly-vibes/wai)
 
-A single Android app hosting many small apps. Each mini-app is a self-contained web page (HTML/CSS/JS) running inside a WebView.
+A single Android app hosting many small apps. Each mini-app is a native Android Activity — pure Kotlin, minimal dependencies, low resource usage.
 
 ## Prerequisites
 

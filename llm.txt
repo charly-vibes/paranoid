@@ -1,28 +1,29 @@
 # paranoid
 
-> A single Android app hosting many small apps (mini-apps).
+> A single Android app hosting many small native apps (mini-apps).
 
 ## Overview
 
-Paranoid is an Android app that wraps multiple self-contained mini-apps in a WebView. Each mini-app is vanilla HTML/CSS/JS — no frameworks, no build step. The hub screen lists all available mini-apps and lets you launch them.
+Paranoid is an Android app containing multiple self-contained mini-apps. Each mini-app is a native Android Activity — pure Kotlin + Android Views, no Compose, no heavy frameworks. The hub screen lists all available mini-apps.
 
 ## Structure
 
-- Mini-apps live at the repo root, each in its own folder with `index.html`, `style.css`, `script.js`
-- Each mini-app has a `spec/functionality.md` describing its purpose and `sessions/` for dev notes
-- The Android project lives in `android/` — a Kotlin WebView shell
-- `build-metadata.sh` auto-discovers mini-apps and generates `apps-metadata.json`
-- `justfile` provides scaffolding (`just new app-name`) and build commands
+- Mini-apps live at the repo root, each with `spec/functionality.md` and `sessions/` for dev notes
+- Native code lives in `android/app/src/main/kotlin/dev/charly/paranoid/apps/<name>/`
+- Each mini-app is a separate Activity registered in AndroidManifest.xml
+- `justfile` provides scaffolding and build commands
 
-## Design
+## Design Principles
 
-- Dark theme (#121212 background), mobile-first, touch-friendly
-- Offline-capable — all content runs locally in WebView
-- Vanilla JS/CSS only, no external dependencies
+- Pure Kotlin + Android Views (XML layouts), no Compose
+- Minimal dependencies per app — only what the Android SDK provides
+- No DI frameworks — constructor injection, manual wiring
+- Dark theme (#121212), touch-friendly, resource-conscious
+- Low memory, fast startup, small APK contribution
 
 ## Commands
 
-- `just new <name>` — scaffold a new mini-app
-- `just serve` — preview in browser
+- `just new <name>` — scaffold a new mini-app (docs)
 - `just build` — build Android APK
 - `just install` — install on connected device
+- `just doctor` — check prerequisites

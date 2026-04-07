@@ -167,70 +167,55 @@ context before starting research or creating tickets.
 
 ## Purpose
 
-A single Android app ("paranoid") that hosts many small apps. Each mini-app is a self-contained web page (HTML/CSS/JS) running inside a WebView. The hub screen lists all available mini-apps. Similar to [jams](../jams/) but as an Android app.
+A single Android app ("paranoid") that hosts many small apps. Each mini-app is a native Android Activity — pure Kotlin, minimal dependencies, low resource usage. Similar to [jams](../jams/) in philosophy (many small self-contained apps) but native Android instead of web.
 
 ## Guidelines
 
 ### Structure
 
-Each mini-app lives in its own folder at the repository root (same pattern as jams):
+Each mini-app lives in its own folder at the repository root:
 
 ```
 app-name/
-├── index.html
-├── style.css
-├── script.js
 ├── spec/
 │   └── functionality.md
 └── sessions/
     └── session-YYYY-MM-DD.md
 ```
 
-The Android project lives in `android/` and provides a WebView shell.
+Native code lives in `android/app/src/main/kotlin/dev/charly/paranoid/apps/<appname>/`.
 
 ### Adding a New Mini-App
 
-1. **Create scaffolding**:
-   ```bash
-   just new app-name
-   ```
-
-2. **Develop the mini-app** by editing:
-   - `app-name/spec/functionality.md` - Purpose and requirements
-   - `app-name/index.html` - HTML structure
-   - `app-name/style.css` - Styling (dark theme)
-   - `app-name/script.js` - Functionality
-
-3. **Document the session** in `app-name/sessions/`
-
-4. **Commit** following Conventional Commits format
-
-The mini-app will automatically appear on the hub screen.
+1. **Create docs**: `just new app-name`
+2. **Add an Activity** in `android/.../apps/appname/AppNameActivity.kt`
+3. **Register** in `AndroidManifest.xml` and the hub's app list
+4. **Document** the session in `app-name/sessions/`
 
 ### Technical Constraints
 
-- **No frameworks**: Vanilla JavaScript and CSS only for mini-apps
-- **Simplicity first**: Keep code as simple as possible
-- **Offline-capable**: Mini-apps run locally in WebView, no network required
-- **Single page**: All functionality in one HTML file with associated CSS/JS
-- **Mobile-first**: Design for phone screens (touch input, portrait orientation)
+- **Pure Kotlin + Android Views**: No Jetpack Compose, no heavy frameworks
+- **Minimal dependencies**: Each app uses only what it needs from the Android SDK
+- **No DI framework**: Constructor injection or simple manual wiring
+- **Efficient**: Low memory, fast startup, small contribution to APK size
+- **Offline-first**: Work without network unless the feature requires it
 
 ### Design Philosophy
 
 - **Dark theme**: Dark backgrounds (`#121212`), light text — OLED-friendly
 - **Minimalist**: Clean, uncluttered interfaces
-- **Touch-friendly**: Large tap targets (48dp min), swipe gestures where appropriate
+- **Touch-friendly**: Large tap targets (48dp min)
 - **Functional**: Utility over aesthetics
+- **Resource-conscious**: Avoid allocations in hot paths, batch I/O, release resources promptly
 
 ### Android Project
 
-The `android/` directory contains a Kotlin project:
-- Single `MainActivity` hosting a WebView
-- Web content bundled as assets at build time via `just assets`
-- JavaScript bridge available for native features when needed
+The `android/` directory contains the Kotlin project:
+- `MainActivity` — hub screen listing all mini-apps (native RecyclerView or simple ListView)
+- Each mini-app is a separate Activity in `apps/<name>/`
+- Shared utilities in `common/` (only if genuinely reused)
 
 To build: `just build` (requires Android SDK)
-To preview in browser: `just serve`
 
 ### Git Workflow
 
