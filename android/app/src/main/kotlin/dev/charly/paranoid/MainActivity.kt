@@ -1,43 +1,37 @@
 package dev.charly.paranoid
 
-import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.activity.OnBackPressedCallback
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var webView: WebView
-
-    @SuppressLint("SetJavaScriptEnabled")
-    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.allowFileAccess = true
-            settings.allowFileAccessFromFileURLs = true
-            webViewClient = WebViewClient()
-            webChromeClient = WebChromeClient()
+        val appsList = findViewById<RecyclerView>(R.id.apps_list)
+        val emptyState = findViewById<TextView>(R.id.empty_state)
+        val infoButton = findViewById<TextView>(R.id.info_button)
+
+        val apps = AppRegistry.apps
+
+        if (apps.isEmpty()) {
+            appsList.visibility = View.GONE
+            emptyState.visibility = View.VISIBLE
+        } else {
+            appsList.layoutManager = LinearLayoutManager(this)
+            appsList.adapter = AppListAdapter(apps) { app ->
+                startActivity(Intent(this, app.activityClass))
+            }
         }
 
-        setContentView(webView)
-        webView.loadUrl("file:///android_asset/index.html")
-
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (webView.canGoBack()) {
-                    webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
-                }
-            }
-        })
+        infoButton.setOnClickListener {
+            startActivity(Intent(this, InfoActivity::class.java))
+        }
     }
 }

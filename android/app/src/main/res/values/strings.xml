@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">paranoid</string>
+    <string name="hub_subtitle">small apps, one screen at a time</string>
+    <string name="no_apps">No apps yet.</string>
+    <string name="info_title">Info</string>
+    <string name="section_build">Build</string>
+    <string name="section_environment">Environment</string>
 </resources>

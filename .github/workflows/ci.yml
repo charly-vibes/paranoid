@@ -37,12 +37,6 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build metadata and copy assets
-        run: |
-          sudo apt-get install -y -qq jq
-          bash build-metadata.sh > apps-metadata.json
-          bash copy-assets.sh
-
       - name: Build debug APK
         working-directory: android
         run: ./gradlew assembleDebug
