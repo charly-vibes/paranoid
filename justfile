@@ -174,18 +174,7 @@ metadata:
 
 # Copy web content to Android assets
 assets: metadata
-    #!/usr/bin/env bash
-    set -euo pipefail
-    ASSETS="android/app/src/main/assets"
-    rm -rf "$ASSETS/apps" "$ASSETS/index.html" "$ASSETS/style.css" "$ASSETS/script.js" "$ASSETS/apps-metadata.json"
-    mkdir -p "$ASSETS"
-    cp index.html style.css script.js apps-metadata.json "$ASSETS/"
-    # Copy each mini-app (folders with spec/functionality.md)
-    for app in $(find . -maxdepth 3 -path '*/spec/functionality.md' -printf '%h\n' | sed 's|^\./||;s|/spec$||' | sort); do
-        mkdir -p "$ASSETS/$app"
-        cp "$app/index.html" "$app/style.css" "$app/script.js" "$ASSETS/$app/" 2>/dev/null || true
-    done
-    echo "✓ Copied web content to $ASSETS"
+    bash copy-assets.sh
 
 # Start local development server (browser)
 serve PORT="8000": metadata

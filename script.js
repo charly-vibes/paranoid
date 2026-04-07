@@ -126,19 +126,22 @@ function showSessions(appName, sessions) {
         return;
     }
 
-    const html = sessions.map(file => {
+    const container = document.createElement('div');
+    for (const file of sessions) {
         const label = file.replace('session-', '').replace('.md', '');
-        return `<a href="#" class="md-file-link" data-url="${appName}/sessions/${file}">${label}</a>`;
-    }).join('');
-
-    openOverlay(title, html);
-
-    document.getElementById('overlay-body').querySelectorAll('.md-file-link').forEach(link => {
-        link.addEventListener('click', (e) => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'md-file-link';
+        a.textContent = label;
+        a.dataset.url = `${appName}/sessions/${file}`;
+        a.addEventListener('click', (e) => {
             e.preventDefault();
-            showMarkdown(title + ' — ' + link.textContent, link.dataset.url);
+            showMarkdown(title + ' — ' + a.textContent, a.dataset.url);
         });
-    });
+        container.appendChild(a);
+    }
+
+    openOverlay(title, container.innerHTML);
 }
 
 // --- Minimal Markdown renderer ---

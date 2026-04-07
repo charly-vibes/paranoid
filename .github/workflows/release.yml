@@ -23,27 +23,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build metadata
+      - name: Build metadata and copy assets
         run: |
-          sudo apt-get install -y jq
+          sudo apt-get install -y -qq jq
           bash build-metadata.sh > apps-metadata.json
+          bash copy-assets.sh
 
-      - name: Copy assets
-        run: |
-          ASSETS="android/app/src/main/assets"
-          mkdir -p "$ASSETS"
-          cp index.html style.css script.js apps-metadata.json "$ASSETS/"
-          for app in $(find . -maxdepth 3 -path '*/spec/functionality.md' -printf '%h\n' | sed 's|^\./||;s|/spec$||' | sort); do
-            mkdir -p "$ASSETS/$app"
-            cp "$app/index.html" "$app/style.css" "$app/script.js" "$ASSETS/$app/" 2>/dev/null || true
-          done
-
-      - name: Build APK
+      - name: Build debug APK
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleDebug
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/release/*.apk
+          files: android/app/build/outputs/apk/debug/*.apk
           generate_release_notes: true

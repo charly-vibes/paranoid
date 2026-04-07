@@ -6,12 +6,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# Discover apps: directories that have a spec/functionality.md
-APPS=$(find . -maxdepth 3 -path '*/spec/functionality.md' -printf '%h\n' | sed 's|^\./||;s|/spec$||' | sort)
-
 echo "["
 first=true
-for app in $APPS; do
+
+# Discover apps: directories that have a spec/functionality.md
+while IFS= read -r spec; do
+    app="$(dirname "$(dirname "$spec")")"
     [ -d "$app" ] || continue
 
     # Description: first non-empty, non-heading line after ## Purpose
@@ -24,7 +24,7 @@ for app in $APPS; do
     # Session files
     sessions="[]"
     if [ -d "$app/sessions" ]; then
-        files=$(find "$app/sessions" -name '*.md' -printf '%f\n' 2>/dev/null | sort)
+        files=$(find "$app/sessions" -name '*.md' -print 2>/dev/null | sort | xargs -I{} basename {} 2>/dev/null || true)
         if [ -n "$files" ]; then
             sessions=$(echo "$files" | jq -R . | jq -s .)
         fi
@@ -41,6 +41,7 @@ for app in $APPS; do
         --arg desc "$desc" \
         --argjson sessions "$sessions" \
         '{name: $name, description: $desc, sessions: $sessions}'
-done
+done < <(find . -maxdepth 3 -path '*/spec/functionality.md' -print | sort)
+
 echo ""
 echo "]"
