@@ -13,6 +13,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
 
     @SuppressLint("SetJavaScriptEnabled")
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -20,6 +21,7 @@ class MainActivity : AppCompatActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = true
+            settings.allowFileAccessFromFileURLs = true
             webViewClient = WebViewClient()
             webChromeClient = WebChromeClient()
         }

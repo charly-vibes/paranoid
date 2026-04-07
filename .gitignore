@@ -2,6 +2,10 @@
 apps-metadata.json
 build-info.json
 
+# Signing
+*.keystore
+*.jks
+
 # Android / Gradle
 *.class
 *.log

@@ -132,7 +132,7 @@
         return new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open('GET', url);
-            xhr.onload = () => resolve(xhr.status);
+            xhr.onload = () => resolve(xhr.responseText.length > 0);
             xhr.onerror = () => reject(new Error('failed'));
             xhr.send();
         });
@@ -188,9 +188,8 @@
         let html = '';
         for (const [file, label] of checks) {
             try {
-                const status = await loadFile(file);
-                const ok = status >= 200 && status < 400;
-                html += row(label, ok ? `${file} OK` : `${file} (${status})`, ok ? 'ok' : 'err');
+                const ok = await loadFile(file);
+                html += row(label, ok ? `${file} OK` : `${file} empty`, ok ? 'ok' : 'warn');
             } catch {
                 html += row(label, `${file} FAIL`, 'err');
             }
