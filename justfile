@@ -1,5 +1,7 @@
 # paranoid - Android app with mini-apps
 
+docker_image := "paranoid-builder"
+
 # Check prerequisites
 doctor:
     #!/usr/bin/env bash
@@ -18,26 +20,21 @@ doctor:
     check python3   "https://www.python.org/"
     check jq        "https://jqlang.github.io/jq/"
     check git       "https://git-scm.com/"
+    check docker    "https://docs.docker.com/get-docker/"
     echo ""
-    echo "Optional (for Android builds):"
-    if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ]; then
-        printf "  ✓ %-14s %s\n" "ANDROID_HOME" "$ANDROID_HOME"
-    else
-        printf "  ✗ %-14s not set — install Android Studio or SDK command-line tools\n" "ANDROID_HOME"
-    fi
-    if [ -f android/gradlew ]; then
-        printf "  ✓ %-14s %s\n" "gradlew" "android/gradlew"
-    else
-        printf "  ✗ %-14s missing — run 'cd android && gradle wrapper'\n" "gradlew"
-        ok=false
-    fi
+    echo "Optional:"
     check adb       "comes with Android SDK platform-tools"
-    echo ""
-    echo "Optional (code quality):"
     check shellcheck "https://www.shellcheck.net/"
     check typos      "https://github.com/crate-ci/typos"
     check vale       "https://vale.sh/"
     check prek       "https://github.com/j178/prek"
+    echo ""
+    echo "Docker image:"
+    if docker image inspect {{docker_image}} &>/dev/null; then
+        printf "  ✓ %-14s ready\n" "{{docker_image}}"
+    else
+        printf "  ✗ %-14s not built — run 'just docker-build'\n" "{{docker_image}}"
+    fi
     echo ""
     if [ "$ok" = true ]; then
         echo "✓ All required tools found"
@@ -46,99 +43,46 @@ doctor:
         exit 1
     fi
 
+# Build the Docker image with Android SDK
+docker-build:
+    docker build -t {{docker_image}} -f - . <<'DOCKERFILE'
+    FROM eclipse-temurin:17-jdk
+    RUN apt-get update -qq && apt-get install -y -qq unzip curl && rm -rf /var/lib/apt/lists/*
+    ENV ANDROID_HOME=/opt/android-sdk
+    RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
+        cd /tmp && \
+        curl -sSfO https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip && \
+        unzip -q commandlinetools-linux-*.zip && \
+        mv cmdline-tools $ANDROID_HOME/cmdline-tools/latest && \
+        rm commandlinetools-linux-*.zip && \
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true && \
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
+    WORKDIR /app
+    DOCKERFILE
+    @echo "✓ Docker image '{{docker_image}}' built"
+
+# Run a gradle command in Docker
+_gradle +ARGS:
+    docker run --rm -v "$(pwd)":/app -w /app/android {{docker_image}} ./gradlew {{ARGS}}
+
 # Clean build artifacts
 clean:
-    rm -rf apps-metadata.json android/app/build android/build android/app/src/main/assets
+    rm -rf android/app/build android/build
     @echo "✓ Cleaned"
 
 # Create scaffolding for a new mini-app
-new PAGE_NAME:
+new APP_NAME:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [ -d "{{PAGE_NAME}}" ]; then
-        echo "Error: Directory '{{PAGE_NAME}}' already exists"
+    if [ -d "{{APP_NAME}}" ]; then
+        echo "Error: Directory '{{APP_NAME}}' already exists"
         exit 1
     fi
-    echo "Creating scaffolding for {{PAGE_NAME}}..."
-    mkdir -p "{{PAGE_NAME}}/spec" "{{PAGE_NAME}}/sessions"
+    echo "Creating scaffolding for {{APP_NAME}}..."
+    mkdir -p "{{APP_NAME}}/spec" "{{APP_NAME}}/sessions"
 
-    cat > "{{PAGE_NAME}}/index.html" << 'EOF'
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-        <title>{{PAGE_NAME}}</title>
-        <link rel="stylesheet" href="style.css">
-    </head>
-    <body>
-        <nav><a href="../index.html" class="home-link">← paranoid</a></nav>
-        <main>
-            <h1>{{PAGE_NAME}}</h1>
-        </main>
-        <script src="script.js"></script>
-    </body>
-    </html>
-    EOF
-
-    cat > "{{PAGE_NAME}}/style.css" << 'EOF'
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        font-family: system-ui, -apple-system, sans-serif;
-        background: #121212;
-        color: #e0e0e0;
-        line-height: 1.6;
-        min-height: 100vh;
-        padding: 1rem;
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        padding: 0.75rem 1rem;
-        background: #1a1a1a;
-        z-index: 100;
-    }
-
-    .home-link {
-        color: #888;
-        text-decoration: none;
-        font-size: 0.9rem;
-    }
-
-    main {
-        max-width: 600px;
-        margin: 0 auto;
-        padding-top: 3rem;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-        font-weight: 300;
-        margin-bottom: 1.5rem;
-        color: #fff;
-    }
-    EOF
-
-    cat > "{{PAGE_NAME}}/script.js" << 'EOF'
-    // {{PAGE_NAME}}
-    "use strict";
-
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('{{PAGE_NAME}} loaded');
-    });
-    EOF
-
-    cat > "{{PAGE_NAME}}/spec/functionality.md" << 'EOF'
-    # {{PAGE_NAME}} - Functionality Specification
+    cat > "{{APP_NAME}}/spec/functionality.md" << 'EOF'
+    # {{APP_NAME}} - Functionality Specification
 
     ## Purpose
 
@@ -159,38 +103,41 @@ new PAGE_NAME:
     [Describe expected behavior]
     EOF
 
-    echo "✓ Created {{PAGE_NAME}}/index.html"
-    echo "✓ Created {{PAGE_NAME}}/style.css"
-    echo "✓ Created {{PAGE_NAME}}/script.js"
-    echo "✓ Created {{PAGE_NAME}}/spec/functionality.md"
-    echo "✓ Created {{PAGE_NAME}}/sessions/ directory"
+    echo "✓ Created {{APP_NAME}}/spec/functionality.md"
+    echo "✓ Created {{APP_NAME}}/sessions/ directory"
     echo ""
     echo "Scaffolding complete! Edit the spec and start building."
 
-# Build apps-metadata.json
-metadata:
-    @bash build-metadata.sh > apps-metadata.json
-    @echo "✓ Built apps-metadata.json"
+# Build debug APK
+build:
+    just _gradle assembleDebug
+    @echo "✓ APK built at android/app/build/outputs/apk/debug/"
 
-# Copy web content to Android assets
-assets: metadata
-    bash copy-assets.sh
+# Build release APK (requires signing env vars)
+build-release:
+    just _gradle assembleRelease
+    @echo "✓ Release APK built at android/app/build/outputs/apk/release/"
 
-# Start local development server (browser)
-serve PORT="8000": metadata
+# Run unit tests
+test:
+    just _gradle test
+    @echo "✓ Tests passed"
+
+# Run lint checks
+lint:
+    just _gradle lint
+    @echo "✓ Lint passed"
+
+# Install on connected device (requires adb)
+install: build
+    adb install android/app/build/outputs/apk/debug/app-debug.apk
+    @echo "✓ Installed on device"
+
+# Start local development server (for GitHub Pages preview)
+serve PORT="8000":
     @echo "Starting HTTP server on http://localhost:{{PORT}}"
     @echo "Press Ctrl+C to stop"
     python3 -m http.server {{PORT}}
-
-# Build Android APK (requires Android SDK)
-build: assets
-    cd android && ./gradlew assembleDebug
-    @echo "✓ APK built at android/app/build/outputs/apk/debug/"
-
-# Install on connected device
-install: build
-    cd android && ./gradlew installDebug
-    @echo "✓ Installed on device"
 
 # Update branch
 update:
@@ -199,13 +146,3 @@ update:
     @echo "Merging origin/main..."
     git merge origin/main
     @echo "✓ Branch updated"
-
-# Sync: add all, commit, push
-sync MESSAGE="Update":
-    @echo "Adding changes..."
-    git add .
-    @echo "Committing..."
-    git commit -m "{{MESSAGE}}"
-    @echo "Pushing to origin..."
-    git push
-    @echo "✓ Changes synced"
