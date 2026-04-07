@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>paranoid — info</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #121212;
+            color: #e0e0e0;
+            line-height: 1.6;
+            padding: 1rem;
+            -webkit-tap-highlight-color: transparent;
+        }
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            padding: 0.75rem 1rem;
+            background: #1a1a1a;
+            z-index: 100;
+        }
+        nav a { color: #888; text-decoration: none; font-size: 0.9rem; }
+        main {
+            max-width: 600px;
+            margin: 0 auto;
+            padding-top: 3rem;
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #fff;
+            margin-bottom: 1.5rem;
+        }
+        .section {
+            margin-bottom: 1.5rem;
+            background: #1e1e1e;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .section-title {
+            padding: 0.75rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #888;
+            background: #1a1a1a;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid #1a1a1a;
+            gap: 1rem;
+        }
+        .row:last-child { border-bottom: none; }
+        .label {
+            color: #888;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .value {
+            color: #e0e0e0;
+            font-size: 0.85rem;
+            font-family: monospace;
+            text-align: right;
+            word-break: break-all;
+        }
+        .value.ok { color: #8c8; }
+        .value.warn { color: #cc8; }
+        .value.err { color: #c88; }
+        .diagnostics {
+            padding: 1rem;
+            font-size: 0.8rem;
+            font-family: monospace;
+            color: #888;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <nav><a href="index.html">← paranoid</a></nav>
+    <main>
+        <h1>Info</h1>
+
+        <div class="section">
+            <div class="section-title">Build</div>
+            <div id="build-info">
+                <div class="diagnostics">Loading build info...</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Environment</div>
+            <div id="env-info"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Asset Diagnostics</div>
+            <div id="asset-diag">
+                <div class="diagnostics">Running checks...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    "use strict";
+
+    function row(label, value, cls) {
+        return `<div class="row"><span class="label">${label}</span><span class="value ${cls || ''}">${value}</span></div>`;
+    }
+
+    function loadJSON(url) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.onload = () => {
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch (e) { reject(e); }
+            };
+            xhr.onerror = () => reject(new Error('failed'));
+            xhr.send();
+        });
+    }
+
+    function loadFile(url) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url);
+            xhr.onload = () => resolve(xhr.status);
+            xhr.onerror = () => reject(new Error('failed'));
+            xhr.send();
+        });
+    }
+
+    // Build info
+    async function showBuildInfo() {
+        const el = document.getElementById('build-info');
+        try {
+            const info = await loadJSON('build-info.json');
+            let html = '';
+            html += row('Commit', info.commit);
+            html += row('Date', info.commit_date);
+            html += row('Message', info.commit_message);
+            html += row('Branch', info.branch);
+            html += row('Tag', info.tag === 'none' ? 'none' : info.tag, info.tag === 'none' ? 'warn' : 'ok');
+            html += row('Dirty', info.dirty ? 'yes' : 'no', info.dirty ? 'warn' : 'ok');
+            html += row('Built', info.build_date);
+            html += row('Mini-apps', info.app_count);
+            el.innerHTML = html;
+        } catch {
+            el.innerHTML = '<div class="diagnostics">build-info.json not found.\nThis build may predate the info page.</div>';
+        }
+    }
+
+    // Environment info
+    function showEnvInfo() {
+        const el = document.getElementById('env-info');
+        let html = '';
+        html += row('Protocol', window.location.protocol);
+        html += row('URL', window.location.href);
+        html += row('User Agent', navigator.userAgent);
+        html += row('Platform', navigator.platform);
+        html += row('Screen', `${screen.width}x${screen.height} @${window.devicePixelRatio}x`);
+        html += row('Viewport', `${window.innerWidth}x${window.innerHeight}`);
+        html += row('Online', navigator.onLine ? 'yes' : 'no', navigator.onLine ? 'ok' : 'warn');
+        html += row('Cookies', navigator.cookieEnabled ? 'yes' : 'no');
+        html += row('LocalStorage', (() => { try { localStorage.setItem('_t', '1'); localStorage.removeItem('_t'); return 'yes'; } catch { return 'no'; } })(), 'ok');
+        el.innerHTML = html;
+    }
+
+    // Asset diagnostics
+    async function runDiagnostics() {
+        const el = document.getElementById('asset-diag');
+        const checks = [
+            ['index.html', 'Hub page'],
+            ['style.css', 'Hub styles'],
+            ['script.js', 'Hub script'],
+            ['apps-metadata.json', 'App metadata'],
+            ['build-info.json', 'Build info'],
+        ];
+
+        let html = '';
+        for (const [file, label] of checks) {
+            try {
+                const status = await loadFile(file);
+                const ok = status >= 200 && status < 400;
+                html += row(label, ok ? `${file} OK` : `${file} (${status})`, ok ? 'ok' : 'err');
+            } catch {
+                html += row(label, `${file} FAIL`, 'err');
+            }
+        }
+
+        // Check mini-apps from metadata
+        try {
+            const apps = await loadJSON('apps-metadata.json');
+            if (apps.length === 0) {
+                html += row('Mini-apps', 'none bundled', 'warn');
+            }
+            for (const app of apps) {
+                try {
+                    await loadFile(`${app.name}/index.html`);
+                    html += row(`App: ${app.name}`, 'OK', 'ok');
+                } catch {
+                    html += row(`App: ${app.name}`, 'MISSING', 'err');
+                }
+            }
+        } catch {
+            html += row('Mini-apps', 'could not load metadata', 'err');
+        }
+
+        el.innerHTML = html;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        showBuildInfo();
+        showEnvInfo();
+        runDiagnostics();
+    });
+    </script>
+</body>
+</html>

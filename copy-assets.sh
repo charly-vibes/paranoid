@@ -11,8 +11,11 @@ ASSETS="android/app/src/main/assets"
 rm -rf "$ASSETS"
 mkdir -p "$ASSETS"
 
+# Generate build info
+bash build-info.sh > build-info.json
+
 # Copy hub page
-cp index.html style.css script.js apps-metadata.json "$ASSETS/"
+cp index.html info.html style.css script.js apps-metadata.json build-info.json "$ASSETS/"
 
 # Copy each mini-app directory (excluding spec/ and sessions/)
 while IFS= read -r spec; do
