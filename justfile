@@ -1,5 +1,56 @@
 # paranoid - Android app with mini-apps
 
+# Check prerequisites
+doctor:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ok=true
+    check() {
+        if command -v "$1" &>/dev/null; then
+            printf "  ✓ %-14s %s\n" "$1" "$(command -v "$1")"
+        else
+            printf "  ✗ %-14s not found — %s\n" "$1" "$2"
+            ok=false
+        fi
+    }
+    echo "Checking prerequisites..."
+    check just      "https://github.com/casey/just"
+    check python3   "https://www.python.org/"
+    check jq        "https://jqlang.github.io/jq/"
+    check git       "https://git-scm.com/"
+    echo ""
+    echo "Optional (for Android builds):"
+    if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME" ]; then
+        printf "  ✓ %-14s %s\n" "ANDROID_HOME" "$ANDROID_HOME"
+    else
+        printf "  ✗ %-14s not set — install Android Studio or SDK command-line tools\n" "ANDROID_HOME"
+    fi
+    if [ -f android/gradlew ]; then
+        printf "  ✓ %-14s %s\n" "gradlew" "android/gradlew"
+    else
+        printf "  ✗ %-14s missing — run 'cd android && gradle wrapper'\n" "gradlew"
+        ok=false
+    fi
+    check adb       "comes with Android SDK platform-tools"
+    echo ""
+    echo "Optional (code quality):"
+    check shellcheck "https://www.shellcheck.net/"
+    check typos      "https://github.com/crate-ci/typos"
+    check vale       "https://vale.sh/"
+    check prek       "https://github.com/j178/prek"
+    echo ""
+    if [ "$ok" = true ]; then
+        echo "✓ All required tools found"
+    else
+        echo "✗ Some required tools are missing (see above)"
+        exit 1
+    fi
+
+# Clean build artifacts
+clean:
+    rm -rf apps-metadata.json android/app/build android/build android/app/src/main/assets
+    @echo "✓ Cleaned"
+
 # Create scaffolding for a new mini-app
 new PAGE_NAME:
     #!/usr/bin/env bash

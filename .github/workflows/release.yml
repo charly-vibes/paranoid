@@ -1,29 +1,15 @@
-name: CI
+name: Release APK
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check spelling
-        uses: crate-ci/typos@v1.32.0
-
-      - name: Shellcheck
-        run: shellcheck build-metadata.sh .devcontainer/setup.sh
-
-      - name: Build metadata
-        run: |
-          sudo apt-get install -y -qq jq
-          bash build-metadata.sh > apps-metadata.json
-
-  build-android:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,10 +25,10 @@ jobs:
 
       - name: Build metadata
         run: |
-          sudo apt-get install -y -qq jq
+          sudo apt-get install -y jq
           bash build-metadata.sh > apps-metadata.json
 
-      - name: Copy web assets
+      - name: Copy assets
         run: |
           ASSETS="android/app/src/main/assets"
           mkdir -p "$ASSETS"
@@ -52,12 +38,12 @@ jobs:
             cp "$app/index.html" "$app/style.css" "$app/script.js" "$ASSETS/$app/" 2>/dev/null || true
           done
 
-      - name: Build debug APK
+      - name: Build APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          files: android/app/build/outputs/apk/release/*.apk
+          generate_release_notes: true

@@ -7,7 +7,7 @@
       "installGradle": "true"
     }
   },
-  "postCreateCommand": "just --version && shellcheck --version",
+  "postCreateCommand": "bash .devcontainer/setup.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -16,5 +16,8 @@
         "skellock.just"
       ]
     }
+  },
+  "remoteEnv": {
+    "ANDROID_HOME": "${containerWorkspaceFolder}/.android-sdk"
   }
 }
