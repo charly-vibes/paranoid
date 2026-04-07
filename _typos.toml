@@ -1,0 +1,9 @@
+[default.extend-words]
+# Add project-specific words that typos flags incorrectly
+
+[files]
+extend-exclude = [
+  "*.jar",
+  "*.apk",
+  ".wai/",
+]

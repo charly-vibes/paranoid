@@ -29,6 +29,10 @@ android/captures/
 android/.idea/
 *.iml
 
+# Vale (keep config/vocabularies, ignore downloaded styles)
+.vale/styles/*/
+!.vale/styles/config/
+
 # OS
 .DS_Store
 Thumbs.db
