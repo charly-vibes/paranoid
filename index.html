@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>paranoid</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main>
+        <h1>paranoid</h1>
+        <p class="subtitle">small apps, one screen at a time</p>
+
+        <div id="apps-list">
+            <p class="loading">Loading apps...</p>
+        </div>
+    </main>
+
+    <div class="overlay" id="md-overlay">
+        <div class="overlay-content">
+            <div class="overlay-header">
+                <h2 id="overlay-title"></h2>
+                <button class="overlay-close" id="overlay-close">&times;</button>
+            </div>
+            <div class="overlay-body" id="overlay-body"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
