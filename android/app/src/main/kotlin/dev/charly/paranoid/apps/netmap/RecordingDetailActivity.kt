@@ -7,7 +7,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.netmap.data.CellsJsonConverter
+import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
+import dev.charly.paranoid.apps.netmap.data.RecordingEntity
+import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
+import dev.charly.paranoid.apps.netmap.data.export.exportCsv
+import dev.charly.paranoid.apps.netmap.data.export.exportGeoJson
+import dev.charly.paranoid.apps.netmap.data.export.exportGpx
+import dev.charly.paranoid.apps.netmap.data.export.exportKml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,9 +81,25 @@ class RecordingDetailActivity : AppCompatActivity() {
 
             // Export button
             findViewById<TextView>(R.id.btn_export).setOnClickListener {
-                // TODO: wire to export (PARANOID-59h)
+                showExportDialog(recording, measurements)
             }
         }
+    }
+
+    private fun showExportDialog(recording: RecordingEntity, measurements: List<MeasurementEntity>) {
+        val formats = arrayOf("GeoJSON", "CSV", "KML", "GPX")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Export as")
+            .setItems(formats) { _, which ->
+                val slug = recording.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+                when (which) {
+                    0 -> ShareHelper.share(this, exportGeoJson(recording, measurements), "$slug.geojson", "application/geo+json")
+                    1 -> ShareHelper.share(this, exportCsv(measurements), "$slug.csv", "text/csv")
+                    2 -> ShareHelper.share(this, exportKml(recording, measurements), "$slug.kml", "application/vnd.google-earth.kml+xml")
+                    3 -> ShareHelper.share(this, exportGpx(recording, measurements), "$slug.gpx", "application/gpx+xml")
+                }
+            }
+            .show()
     }
 
     override fun onStart() { super.onStart(); mapView.onStart() }
