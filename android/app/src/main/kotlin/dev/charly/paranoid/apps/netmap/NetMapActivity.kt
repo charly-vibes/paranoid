@@ -18,6 +18,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.location.LocationServices
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.netmap.model.SignalLevel
 import dev.charly.paranoid.apps.netmap.service.RecordingService
@@ -51,6 +52,7 @@ class NetMapActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions()
     ) { results ->
         updatePermissionState()
+        map?.let { centerOnLastKnownLocation(it) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,10 +65,7 @@ class NetMapActivity : AppCompatActivity() {
         mapView.getMapAsync { mapLibreMap ->
             map = mapLibreMap
             mapLibreMap.setStyle(MapHelper.TILE_URL) {
-                mapLibreMap.cameraPosition = CameraPosition.Builder()
-                    .target(LatLng(19.4326, -99.1332)) // Default: Mexico City
-                    .zoom(12.0)
-                    .build()
+                centerOnLastKnownLocation(mapLibreMap)
             }
         }
 
@@ -177,6 +176,34 @@ class NetMapActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.hud_level).text = level.name.lowercase()
             .replaceFirstChar { it.uppercase() }
         findViewById<TextView>(R.id.hud_network).text = network
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun centerOnLastKnownLocation(mapLibreMap: MapLibreMap) {
+        val hasLocation = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasLocation) {
+            LocationServices.getFusedLocationProviderClient(this)
+                .lastLocation
+                .addOnSuccessListener { location ->
+                    val target = if (location != null) {
+                        LatLng(location.latitude, location.longitude)
+                    } else {
+                        LatLng(0.0, 0.0)
+                    }
+                    mapLibreMap.cameraPosition = CameraPosition.Builder()
+                        .target(target)
+                        .zoom(14.0)
+                        .build()
+                }
+        } else {
+            mapLibreMap.cameraPosition = CameraPosition.Builder()
+                .target(LatLng(0.0, 0.0))
+                .zoom(2.0)
+                .build()
+        }
     }
 
     private fun requestPermissions() {
