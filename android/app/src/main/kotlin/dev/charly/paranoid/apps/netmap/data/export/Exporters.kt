@@ -45,25 +45,124 @@ fun exportGeoJson(recording: RecordingEntity, measurements: List<MeasurementEnti
     }.toString(2)
 }
 
-fun exportCsv(measurements: List<MeasurementEntity>): String {
+fun exportCsv(recording: RecordingEntity, measurements: List<MeasurementEntity>): String {
     val sb = StringBuilder()
-    sb.appendLine("timestamp,lat,lng,accuracy_m,speed_kmh,network_type,rsrp,rsrq,rssi,cell_id,pci,signal_level")
+    sb.appendLine("timestamp,lat,lng,accuracy_m,speed_kmh,altitude,bearing,network_type,carrier,serving,technology,mcc,mnc,cell_id,tac,pci,earfcn,band,rsrp,rsrq,rssi,rssnr,sinr,signal_level,neighbor_count")
     for (m in measurements) {
         val cells = CellsJsonConverter.fromJson(m.cellsJson)
-        val s = cells.firstOrNull { it.isServing }
+        val neighborCount = cells.count { !it.isServing }
+        if (cells.isEmpty()) {
+            // No cell info — still emit a row with GPS data
+            sb.appendLine(buildString {
+                append(isoFormat.format(Date(m.timestamp))); append(',')
+                append(m.lat); append(',')
+                append(m.lng); append(',')
+                append(m.accuracyM); append(',')
+                append(m.speedKmh ?: ""); append(',')
+                append(m.altitude ?: ""); append(',')
+                append(m.bearing ?: ""); append(',')
+                append(m.networkType); append(',')
+                append(escapeCsv(recording.carrier ?: "")); append(',')
+                // empty cell columns
+                append(",,,,,,,,,,,,,0")
+            })
+        } else {
+            for (c in cells) {
+                sb.appendLine(buildString {
+                    append(isoFormat.format(Date(m.timestamp))); append(',')
+                    append(m.lat); append(',')
+                    append(m.lng); append(',')
+                    append(m.accuracyM); append(',')
+                    append(m.speedKmh ?: ""); append(',')
+                    append(m.altitude ?: ""); append(',')
+                    append(m.bearing ?: ""); append(',')
+                    append(m.networkType); append(',')
+                    append(escapeCsv(recording.carrier ?: "")); append(',')
+                    append(c.isServing); append(',')
+                    append(c.technology.name); append(',')
+                    append(c.mcc ?: ""); append(',')
+                    append(c.mnc ?: ""); append(',')
+                    append(c.cellId ?: ""); append(',')
+                    append(c.tac ?: ""); append(',')
+                    append(c.pci ?: ""); append(',')
+                    append(c.earfcn ?: ""); append(',')
+                    append(c.band ?: ""); append(',')
+                    append(c.rsrp ?: ""); append(',')
+                    append(c.rsrq ?: ""); append(',')
+                    append(c.rssi ?: ""); append(',')
+                    append(c.rssnr ?: ""); append(',')
+                    append(c.sinr ?: ""); append(',')
+                    append(c.signalLevel.name); append(',')
+                    append(neighborCount)
+                })
+            }
+        }
+    }
+    return sb.toString()
+}
+
+fun exportCellTowers(measurements: List<MeasurementEntity>): String {
+    // Estimate cell tower positions from GPS measurements weighted by signal strength
+    data class CellAccumulator(
+        var weightedLat: Double = 0.0,
+        var weightedLng: Double = 0.0,
+        var totalWeight: Double = 0.0,
+        var count: Int = 0,
+        var minRsrp: Int = Int.MAX_VALUE,
+        var maxRsrp: Int = Int.MIN_VALUE,
+        var technology: String = "",
+        var mcc: Int? = null,
+        var mnc: Int? = null,
+        var tac: Int? = null,
+        var pci: Int? = null,
+        var earfcn: Int? = null,
+        var band: String? = null
+    )
+
+    val cells = mutableMapOf<Long, CellAccumulator>()
+
+    for (m in measurements) {
+        val parsed = CellsJsonConverter.fromJson(m.cellsJson)
+        for (c in parsed) {
+            val id = c.cellId ?: continue
+            val rsrp = c.rsrp ?: continue
+            val acc = cells.getOrPut(id) { CellAccumulator() }
+            // Weight: stronger signal = closer to tower = higher weight
+            val weight = Math.pow(10.0, rsrp / 10.0) // linear power from dBm
+            acc.weightedLat += m.lat * weight
+            acc.weightedLng += m.lng * weight
+            acc.totalWeight += weight
+            acc.count++
+            if (rsrp < acc.minRsrp) acc.minRsrp = rsrp
+            if (rsrp > acc.maxRsrp) acc.maxRsrp = rsrp
+            acc.technology = c.technology.name
+            acc.mcc = acc.mcc ?: c.mcc
+            acc.mnc = acc.mnc ?: c.mnc
+            acc.tac = acc.tac ?: c.tac
+            acc.pci = acc.pci ?: c.pci
+            acc.earfcn = acc.earfcn ?: c.earfcn
+            acc.band = acc.band ?: c.band
+        }
+    }
+
+    val sb = StringBuilder()
+    sb.appendLine("cell_id,estimated_lat,estimated_lng,technology,mcc,mnc,tac,pci,earfcn,band,observations,min_rsrp,max_rsrp")
+    for ((id, acc) in cells.entries.sortedByDescending { it.value.count }) {
+        if (acc.totalWeight == 0.0) continue
         sb.appendLine(buildString {
-            append(isoFormat.format(Date(m.timestamp))); append(',')
-            append(m.lat); append(',')
-            append(m.lng); append(',')
-            append(m.accuracyM); append(',')
-            append(m.speedKmh ?: ""); append(',')
-            append(m.networkType); append(',')
-            append(s?.rsrp ?: ""); append(',')
-            append(s?.rsrq ?: ""); append(',')
-            append(s?.rssi ?: ""); append(',')
-            append(s?.cellId ?: ""); append(',')
-            append(s?.pci ?: ""); append(',')
-            append(s?.signalLevel?.name ?: "")
+            append(id); append(',')
+            append(acc.weightedLat / acc.totalWeight); append(',')
+            append(acc.weightedLng / acc.totalWeight); append(',')
+            append(acc.technology); append(',')
+            append(acc.mcc ?: ""); append(',')
+            append(acc.mnc ?: ""); append(',')
+            append(acc.tac ?: ""); append(',')
+            append(acc.pci ?: ""); append(',')
+            append(acc.earfcn ?: ""); append(',')
+            append(acc.band ?: ""); append(',')
+            append(acc.count); append(',')
+            append(acc.minRsrp); append(',')
+            append(acc.maxRsrp)
         })
     }
     return sb.toString()
@@ -129,3 +228,6 @@ fun exportGpx(recording: RecordingEntity, measurements: List<MeasurementEntity>)
 
 private fun escapeXml(s: String): String =
     s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+private fun escapeCsv(s: String): String =
+    if (s.contains(',') || s.contains('"')) "\"${s.replace("\"", "\"\"")}\"" else s

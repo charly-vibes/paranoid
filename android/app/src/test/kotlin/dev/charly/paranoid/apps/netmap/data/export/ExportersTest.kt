@@ -2,6 +2,7 @@ package dev.charly.paranoid.apps.netmap.data.export
 
 import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
 import dev.charly.paranoid.apps.netmap.data.RecordingEntity
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,14 +22,14 @@ class ExportersTest {
             lat = 19.4326, lng = -99.1332, accuracyM = 5f,
             speedKmh = 30f, bearing = 90f, altitude = 2240.0,
             networkType = "LTE", dataState = "CONNECTED",
-            cellsJson = """[{"serving":true,"tech":"LTE","rsrp":-90,"rsrq":-10,"pci":123,"cellId":456,"level":"GOOD"}]"""
+            cellsJson = """[{"serving":true,"tech":"LTE","rsrp":-90,"rsrq":-10,"pci":123,"cellId":456,"level":"GOOD"},{"serving":false,"tech":"LTE","rsrp":-105,"pci":789,"cellId":999,"level":"FAIR"}]"""
         ),
         MeasurementEntity(
             id = 2, recordingId = "test-123", timestamp = 1700000002000L,
             lat = 19.4330, lng = -99.1335, accuracyM = 8f,
             speedKmh = 25f, bearing = null, altitude = null,
             networkType = "LTE", dataState = "CONNECTED",
-            cellsJson = """[{"serving":true,"tech":"LTE","rsrp":-105,"level":"FAIR"}]"""
+            cellsJson = """[{"serving":true,"tech":"LTE","rsrp":-105,"cellId":456,"pci":123,"level":"FAIR"}]"""
         )
     )
 
@@ -44,20 +45,57 @@ class ExportersTest {
     @Test
     fun `GeoJSON export has correct number of features`() {
         val json = exportGeoJson(recording, measurements)
-        // Two measurements = two features
         val count = Regex("\"Feature\"").findAll(json).count()
-        assertTrue("Expected 2 features, got $count", count == 2)
+        assertEquals("Expected 2 features", 2, count)
     }
 
     @Test
-    fun `CSV export has header and data rows`() {
-        val csv = exportCsv(measurements)
+    fun `CSV exports one row per cell`() {
+        val csv = exportCsv(recording, measurements)
         val lines = csv.trim().lines()
-        assertTrue("Expected header + 2 data rows", lines.size == 3)
-        assertTrue(lines[0].startsWith("timestamp,"))
-        assertTrue(lines[1].contains("19.4326"))
-        assertTrue(lines[1].contains("LTE"))
-        assertTrue(lines[1].contains("-90"))
+        // 1 header + 2 cells from measurement 1 + 1 cell from measurement 2 = 4
+        assertEquals("Expected header + 3 data rows", 4, lines.size)
+        assertTrue(lines[0].contains("serving"))
+        assertTrue(lines[0].contains("carrier"))
+        assertTrue(lines[0].contains("neighbor_count"))
+    }
+
+    @Test
+    fun `CSV includes carrier and neighbor info`() {
+        val csv = exportCsv(recording, measurements)
+        val lines = csv.trim().lines()
+        assertTrue(lines[1].contains("TestCarrier"))
+        assertTrue(lines[1].contains("true")) // serving
+        assertTrue(lines[2].contains("false")) // neighbor
+    }
+
+    @Test
+    fun `CSV handles empty measurements`() {
+        val csv = exportCsv(recording, emptyList())
+        val lines = csv.trim().lines()
+        assertEquals("Only header expected", 1, lines.size)
+    }
+
+    @Test
+    fun `Cell towers export estimates positions`() {
+        val csv = exportCellTowers(measurements)
+        val lines = csv.trim().lines()
+        assertTrue(lines[0].contains("cell_id"))
+        assertTrue(lines[0].contains("estimated_lat"))
+        assertTrue(lines[0].contains("observations"))
+        // cell_id 456 appears in both measurements (serving)
+        assertTrue("Should contain cell 456", csv.contains("456"))
+        // cell_id 999 appears once (neighbor)
+        assertTrue("Should contain cell 999", csv.contains("999"))
+    }
+
+    @Test
+    fun `Cell towers observation count is correct`() {
+        val csv = exportCellTowers(measurements)
+        val lines = csv.trim().lines()
+        // cell 456 appears in 2 measurements
+        val cell456 = lines.find { it.startsWith("456,") }
+        assertTrue("Cell 456 should have 2 observations", cell456 != null && cell456.contains(",2,"))
     }
 
     @Test
@@ -88,16 +126,8 @@ class ExportersTest {
     @Test
     fun `GPX export omits altitude when null`() {
         val gpx = exportGpx(recording, measurements)
-        // Second measurement has null altitude — should not have ele tag for that point
         val lines = gpx.lines()
         val secondTrkpt = lines.filter { it.contains("19.433") }
         assertTrue(secondTrkpt.none { it.contains("<ele>") })
-    }
-
-    @Test
-    fun `CSV handles empty measurements`() {
-        val csv = exportCsv(emptyList())
-        val lines = csv.trim().lines()
-        assertTrue("Only header expected", lines.size == 1)
     }
 }

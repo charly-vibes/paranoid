@@ -11,6 +11,7 @@ import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.netmap.data.RecordingEntity
 import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
+import dev.charly.paranoid.apps.netmap.data.export.exportCellTowers
 import dev.charly.paranoid.apps.netmap.data.export.exportCsv
 import dev.charly.paranoid.apps.netmap.data.export.exportGeoJson
 import dev.charly.paranoid.apps.netmap.data.export.exportGpx
@@ -87,16 +88,17 @@ class RecordingDetailActivity : AppCompatActivity() {
     }
 
     private fun showExportDialog(recording: RecordingEntity, measurements: List<MeasurementEntity>) {
-        val formats = arrayOf("GeoJSON", "CSV", "KML", "GPX")
+        val formats = arrayOf("GeoJSON", "CSV (all cells)", "Cell Towers (estimated)", "KML", "GPX")
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Export as")
             .setItems(formats) { _, which ->
                 val slug = recording.name.replace(Regex("[^a-zA-Z0-9_-]"), "_")
                 when (which) {
                     0 -> ShareHelper.share(this, exportGeoJson(recording, measurements), "$slug.geojson", "application/geo+json")
-                    1 -> ShareHelper.share(this, exportCsv(measurements), "$slug.csv", "text/csv")
-                    2 -> ShareHelper.share(this, exportKml(recording, measurements), "$slug.kml", "application/vnd.google-earth.kml+xml")
-                    3 -> ShareHelper.share(this, exportGpx(recording, measurements), "$slug.gpx", "application/gpx+xml")
+                    1 -> ShareHelper.share(this, exportCsv(recording, measurements), "$slug.csv", "text/csv")
+                    2 -> ShareHelper.share(this, exportCellTowers(measurements), "${slug}_towers.csv", "text/csv")
+                    3 -> ShareHelper.share(this, exportKml(recording, measurements), "$slug.kml", "application/vnd.google-earth.kml+xml")
+                    4 -> ShareHelper.share(this, exportGpx(recording, measurements), "$slug.gpx", "application/gpx+xml")
                 }
             }
             .show()
