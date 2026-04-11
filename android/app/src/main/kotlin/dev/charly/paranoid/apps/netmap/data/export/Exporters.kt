@@ -10,8 +10,10 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-private val isoFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
-    timeZone = TimeZone.getTimeZone("UTC")
+private val isoFormat = ThreadLocal.withInitial {
+    SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
 }
 
 fun exportGeoJson(recording: RecordingEntity, measurements: List<MeasurementEntity>): String {
@@ -26,7 +28,7 @@ fun exportGeoJson(recording: RecordingEntity, measurements: List<MeasurementEnti
                 put("coordinates", JSONArray().apply { put(m.lng); put(m.lat) })
             })
             put("properties", JSONObject().apply {
-                put("timestamp", isoFormat.format(Date(m.timestamp)))
+                put("timestamp", isoFormat.get().format(Date(m.timestamp)))
                 put("accuracy_m", m.accuracyM)
                 m.speedKmh?.let { put("speed_kmh", it) }
                 put("network_type", m.networkType)
@@ -54,7 +56,7 @@ fun exportCsv(recording: RecordingEntity, measurements: List<MeasurementEntity>)
         if (cells.isEmpty()) {
             // No cell info — still emit a row with GPS data
             sb.appendLine(buildString {
-                append(isoFormat.format(Date(m.timestamp))); append(',')
+                append(isoFormat.get().format(Date(m.timestamp))); append(',')
                 append(m.lat); append(',')
                 append(m.lng); append(',')
                 append(m.accuracyM); append(',')
@@ -63,13 +65,13 @@ fun exportCsv(recording: RecordingEntity, measurements: List<MeasurementEntity>)
                 append(m.bearing ?: ""); append(',')
                 append(m.networkType); append(',')
                 append(escapeCsv(recording.carrier ?: "")); append(',')
-                // empty cell columns
-                append(",,,,,,,,,,,,,0")
+                // 16 empty cell columns: serving..signal_level + neighbor_count=0
+                append(",,,,,,,,,,,,,,,0")
             })
         } else {
             for (c in cells) {
                 sb.appendLine(buildString {
-                    append(isoFormat.format(Date(m.timestamp))); append(',')
+                    append(isoFormat.get().format(Date(m.timestamp))); append(',')
                     append(m.lat); append(',')
                     append(m.lng); append(',')
                     append(m.accuracyM); append(',')
@@ -128,7 +130,7 @@ fun exportCellTowers(measurements: List<MeasurementEntity>): String {
             val rsrp = c.rsrp ?: continue
             val acc = cells.getOrPut(id) { CellAccumulator() }
             // Weight: stronger signal = closer to tower = higher weight
-            val weight = Math.pow(10.0, rsrp / 10.0) // linear power from dBm
+            val weight = Math.pow(10.0, rsrp.toDouble() / 10.0) // linear power from dBm
             acc.weightedLat += m.lat * weight
             acc.weightedLng += m.lng * weight
             acc.totalWeight += weight
@@ -185,9 +187,9 @@ fun exportKml(recording: RecordingEntity, measurements: List<MeasurementEntity>)
         val s = cells.firstOrNull { it.isServing }
         val level = s?.signalLevel?.name ?: "NONE"
         sb.appendLine("<Placemark>")
-        sb.appendLine("<name>${isoFormat.format(Date(m.timestamp))}</name>")
+        sb.appendLine("<name>${isoFormat.get().format(Date(m.timestamp))}</name>")
         sb.appendLine("<styleUrl>#$level</styleUrl>")
-        sb.appendLine("<description>RSRP: ${s?.rsrp ?: "N/A"} dBm, ${m.networkType}</description>")
+        sb.appendLine("<description>RSRP: ${s?.rsrp ?: "N/A"} dBm, ${escapeXml(m.networkType)}</description>")
         sb.appendLine("<Point><coordinates>${m.lng},${m.lat}</coordinates></Point>")
         sb.appendLine("</Placemark>")
     }
@@ -209,7 +211,7 @@ fun exportGpx(recording: RecordingEntity, measurements: List<MeasurementEntity>)
         val s = cells.firstOrNull { it.isServing }
         sb.append("""<trkpt lat="${m.lat}" lon="${m.lng}">""")
         m.altitude?.let { sb.append("<ele>$it</ele>") }
-        sb.append("<time>${isoFormat.format(Date(m.timestamp))}</time>")
+        sb.append("<time>${isoFormat.get().format(Date(m.timestamp))}</time>")
         if (s != null) {
             sb.append("<extensions>")
             s.rsrp?.let { sb.append("<rsrp>$it</rsrp>") }
