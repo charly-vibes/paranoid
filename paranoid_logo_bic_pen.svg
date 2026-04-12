@@ -1,0 +1,60 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="paper">
+      <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="3" seed="8" result="noise"/>
+      <feColorMatrix in="noise" type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.05"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="inkBleed" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="170" fill="#F6F2E9"/>
+  <rect width="1024" height="1024" rx="170" filter="url(#paper)" opacity="0.85"/>
+
+  <!-- outer scratch circle -->
+  <g stroke="#153A9B" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#inkBleed)">
+    <path d="M259 534C252 454 279 379 334 319C387 261 461 233 533 236C602 239 671 266 722 319C779 379 798 451 790 529C784 598 758 664 710 713C661 764 595 790 523 792C454 794 390 774 338 731C286 687 264 617 259 534Z" stroke-width="9"/>
+    <path d="M271 530C266 456 291 385 342 331C391 279 460 249 531 249C602 249 665 276 714 328C766 384 784 451 778 527C772 593 746 655 702 701C655 750 595 776 526 778C459 780 400 761 351 722C300 682 278 615 271 530Z" stroke-width="4" opacity="0.82"/>
+    <path d="M320 349L298 325" stroke-width="4" opacity="0.7"/>
+    <path d="M707 335L736 311" stroke-width="4" opacity="0.7"/>
+  </g>
+
+  <!-- eyes -->
+  <g fill="#153A9B" filter="url(#inkBleed)">
+    <path d="M379 446C405 422 450 416 482 437C505 452 505 490 480 506C450 526 403 523 377 500C358 483 359 462 379 446Z"/>
+    <path d="M552 436C589 410 647 412 683 438C709 456 711 494 683 513C645 539 587 540 551 517C520 497 521 458 552 436Z"/>
+  </g>
+
+  <!-- pen-pressure holes in eyes -->
+  <g fill="#F6F2E9">
+    <ellipse cx="441" cy="470" rx="10" ry="11" transform="rotate(-7 441 470)"/>
+    <ellipse cx="631" cy="468" rx="11" ry="12" transform="rotate(5 631 468)"/>
+  </g>
+
+  <!-- scribbled mouth -->
+  <g stroke="#153A9B" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#inkBleed)">
+    <path d="M377 623C420 609 458 629 503 639C551 649 597 619 646 625" stroke-width="8"/>
+    <path d="M376 626C421 603 463 626 507 634C555 642 600 615 646 628" stroke-width="3.8" opacity="0.85"/>
+    <path d="M660 620L723 604" stroke-width="7"/>
+    <path d="M662 626L720 609" stroke-width="3.2" opacity="0.8"/>
+  </g>
+
+  <!-- jitter sketch accents -->
+  <g stroke="#153A9B" stroke-linecap="round" fill="none" filter="url(#inkBleed)">
+    <path d="M494 756C515 755 532 755 545 757" stroke-width="7"/>
+    <path d="M494 769C513 768 532 769 545 770" stroke-width="2.8" opacity="0.75"/>
+    <path d="M340 700C351 711 364 723 379 732" stroke-width="5" opacity="0.85"/>
+    <path d="M691 684C680 698 669 711 653 724" stroke-width="5" opacity="0.85"/>
+  </g>
+
+  <!-- tiny handwritten P -->
+  <g stroke="#153A9B" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#inkBleed)">
+    <path d="M499 740L499 790" stroke-width="8"/>
+    <path d="M499 742C511 740 527 741 535 749C542 756 541 768 531 773C523 777 511 776 500 776" stroke-width="8"/>
+    <path d="M499 742C511 741 525 743 533 749C538 754 538 765 530 770C522 774 511 774 500 774" stroke-width="3.5" opacity="0.78"/>
+  </g>
+</svg>

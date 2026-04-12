@@ -32,6 +32,19 @@ h1 {
     margin-bottom: 2rem;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
 .subtitle {
     color: #666;
     font-size: 0.9rem;
