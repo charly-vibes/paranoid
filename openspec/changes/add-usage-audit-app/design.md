@@ -95,7 +95,7 @@ Usage-domain tests should operate on normalized `AppUsageSlice` values rather th
 
 ## Risks / Trade-offs
 - Battery history quality depends on how consistently the app records snapshots. If the app only samples opportunistically, overnight summaries may be coarse.
-  - Mitigation: record on app open, power-state changes, boot, and optionally lightweight scheduled/background refresh where platform limits allow.
+  - Mitigation: record on app open, power-state changes, and boot. Periodic background workers are deferred to v1.1.
 
 - Usage access is a special permission many users do not understand.
   - Mitigation: provide a clear empty state with one-tap navigation to the correct Settings screen and explain why the access is needed.
@@ -135,5 +135,5 @@ v1 CSV export should include these columns:
 - When battery drops with no observed app activity, explicitly say that no foreground app activity was observed during the window.
 - When charging occurs inside the overnight window, explicitly say that the window included charging activity and that drain values may reflect both discharge and charging.
 
-## Remaining Open Questions
-- Should v1 also show screen-on count or unlock count if the data is available with acceptable complexity?
+## Remaining Open Questions (deferred to v1.1)
+1. Should the app also show screen-on count or unlock count if the data is available with acceptable complexity?

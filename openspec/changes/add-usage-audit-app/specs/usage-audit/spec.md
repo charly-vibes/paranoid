@@ -55,6 +55,23 @@ The system SHALL let the user export and share audit information in both human-r
 - **THEN** the system generates a CSV file containing the relevant audit records
 - **AND** the system makes that file available through Android sharing mechanisms
 
+### Requirement: Configurable overnight window
+The system SHALL provide a configurable overnight window with a default of 22:00–07:00. The window start and end times SHALL be user-visible and user-editable.
+
+#### Scenario: Default overnight window
+- **GIVEN** the user has not changed the overnight window
+- **WHEN** the system computes an overnight audit
+- **THEN** the window spans 22:00 to 07:00
+
+#### Scenario: User-edited overnight window
+- **GIVEN** the user has set the window to 23:00–06:00
+- **WHEN** the system computes an overnight audit
+- **THEN** the window spans 23:00 to 06:00
+
+#### Scenario: Invalid overnight window
+- **WHEN** the user sets start equal to end or a window longer than 16 hours
+- **THEN** the system rejects the configuration and shows a validation error
+
 ### Requirement: Minimal offline operation
 The system SHALL operate offline for collection, viewing, and export of locally available audit data.
 
