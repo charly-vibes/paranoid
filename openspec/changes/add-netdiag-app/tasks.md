@@ -8,11 +8,11 @@
 ## 2. Data Layer (netdiag-data)
 Depends on: 1.
 - [x] 2.1 Create data classes from DiagnosticsSchema.kt under `apps/netdiag/data/`: all snapshot types, comparison types, session, thresholds, enums
-- [ ] 2.2 Create Room entities: `DiagnosticsSessionEntity`, `DiagnosticsSnapshotEntity` (JSON TEXT column), `DiagnosticsComparisonEntity` (JSON TEXT column)
-- [ ] 2.3 Create Room DAOs: SessionDao (CRUD, list by date desc), SnapshotDao, ComparisonDao
-- [ ] 2.4 Register entities in `ParanoidDatabase`
-- [ ] 2.5 Write unit tests for JSON serialization round-trip of DiagnosticsSnapshot
-- [ ] 2.6 Write unit tests for enum ordering (severity, signal category)
+- [x] 2.2 Create Room entities: `DiagnosticsSessionEntity`, `DiagnosticsSnapshotEntity` (JSON TEXT column), `DiagnosticsComparisonEntity` (JSON TEXT column)
+- [x] 2.3 Create Room DAOs: SessionDao (CRUD, list by date desc), SnapshotDao, ComparisonDao
+- [x] 2.4 Register entities in `ParanoidDatabase`
+- [x] 2.5 Write unit tests for JSON serialization round-trip of DiagnosticsSnapshot
+- [x] 2.6 Write unit tests for enum ordering (severity, signal category)
 
 ## 3. Snapshot Collectors (netdiag-snapshot)
 Depends on: 2.
