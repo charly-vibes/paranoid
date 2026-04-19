@@ -10,6 +10,12 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
     <application
         android:allowBackup="true"
@@ -43,6 +49,22 @@
 
         <activity
             android:name=".apps.netmap.RecordingDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.netdiag.NetDiagActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.netdiag.SnapshotDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.netdiag.ComparisonResultActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.netdiag.SessionHistoryActivity"
             android:exported="false" />
 
         <service

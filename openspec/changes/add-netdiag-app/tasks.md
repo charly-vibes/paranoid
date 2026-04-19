@@ -1,9 +1,9 @@
 ## 1. Project Setup
-- [ ] 1.1 Add dependencies to `android/app/build.gradle.kts`: icmp4a, kotlinx.serialization (if not already present)
-- [ ] 1.2 Add permissions to `AndroidManifest.xml`: ACCESS_FINE_LOCATION, READ_PHONE_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE, NEARBY_WIFI_DEVICES (API 33+), BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE, BLUETOOTH_SCAN (API 31+), ACCESS_NETWORK_STATE, INTERNET, FOREGROUND_SERVICE, POST_NOTIFICATIONS
-- [ ] 1.3 Register NetDiagActivity, SnapshotDetailActivity, ComparisonResultActivity, SessionHistoryActivity in AndroidManifest.xml
-- [ ] 1.4 Register NetDiag entry in hub app list (`HubActivity.kt`)
-- [ ] 1.5 Verify project compiles with new dependencies
+- [x] 1.1 Add dependencies to `android/app/build.gradle.kts`: icmp4a, kotlinx.serialization (if not already present)
+- [x] 1.2 Add permissions to `AndroidManifest.xml`: ACCESS_FINE_LOCATION, READ_PHONE_STATE, ACCESS_WIFI_STATE, CHANGE_WIFI_STATE, NEARBY_WIFI_DEVICES (API 33+), BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE, BLUETOOTH_SCAN (API 31+), ACCESS_NETWORK_STATE, INTERNET, FOREGROUND_SERVICE, POST_NOTIFICATIONS
+- [x] 1.3 Register NetDiagActivity, SnapshotDetailActivity, ComparisonResultActivity, SessionHistoryActivity in AndroidManifest.xml
+- [x] 1.4 Register NetDiag entry in hub app list (`HubActivity.kt`)
+- [x] 1.5 Verify project compiles with new dependencies
 
 ## 2. Data Layer (netdiag-data)
 Depends on: 1.

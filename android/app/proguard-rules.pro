@@ -15,3 +15,4 @@
 # Keep our models used in JSON serialization
 -keep class dev.charly.paranoid.apps.netmap.model.** { *; }
 -keep class dev.charly.paranoid.apps.netmap.data.** { *; }
+-keep class dev.charly.paranoid.apps.netdiag.data.** { *; }
