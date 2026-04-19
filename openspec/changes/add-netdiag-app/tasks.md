@@ -7,7 +7,7 @@
 
 ## 2. Data Layer (netdiag-data)
 Depends on: 1.
-- [ ] 2.1 Create data classes from DiagnosticsSchema.kt under `apps/netdiag/data/`: all snapshot types, comparison types, session, thresholds, enums
+- [x] 2.1 Create data classes from DiagnosticsSchema.kt under `apps/netdiag/data/`: all snapshot types, comparison types, session, thresholds, enums
 - [ ] 2.2 Create Room entities: `DiagnosticsSessionEntity`, `DiagnosticsSnapshotEntity` (JSON TEXT column), `DiagnosticsComparisonEntity` (JSON TEXT column)
 - [ ] 2.3 Create Room DAOs: SessionDao (CRUD, list by date desc), SnapshotDao, ComparisonDao
 - [ ] 2.4 Register entities in `ParanoidDatabase`
