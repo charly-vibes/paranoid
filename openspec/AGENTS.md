@@ -454,3 +454,15 @@ openspec archive <change-id> [--yes|-y]  # Mark complete (add --yes for automati
 ```
 
 Remember: Specs are truth. Changes are proposals. Keep them in sync.
+
+## Build & Test Environment
+
+**IMPORTANT**: The host system may run Java 25+, which is incompatible with the Kotlin/AGP toolchain used in this project. Always run tests and builds inside Docker via `just`:
+
+```bash
+just test        # Run all unit tests (Docker)
+just build       # Build debug APK (Docker)
+just docker-build  # (Re)build Docker image if missing
+```
+
+Do NOT run `./gradlew` directly on the host — it will fail with a Java version parse error on JDK 25+.

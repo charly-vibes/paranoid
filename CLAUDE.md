@@ -217,6 +217,18 @@ The `android/` directory contains the Kotlin project:
 
 To build: `just build` (requires Android SDK)
 
+### Running Tests
+
+**IMPORTANT**: The host system may run a Java version incompatible with the Kotlin/AGP toolchain. Always run tests and builds inside Docker:
+
+```bash
+just test        # Run all unit tests (via Docker)
+just build       # Build debug APK (via Docker)
+just docker-build  # (Re)build the Docker image if missing
+```
+
+Do NOT run `./gradlew` directly on the host — it will fail on Java 25+.
+
 ### Git Workflow
 
 Follow **Conventional Commits**: `<type>(<scope>): <description>`
