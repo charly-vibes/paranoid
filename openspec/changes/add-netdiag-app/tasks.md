@@ -16,15 +16,15 @@ Depends on: 1.
 
 ## 3. Snapshot Collectors (netdiag-snapshot)
 Depends on: 2.
-- [ ] 3.1 Create `WifiCollector`: WifiManager + WifiInfo (API 31+: via `NetworkCapabilities.getTransportInfo()`) → WifiSnapshot, scan results → WifiEnvironment, BSS Load IE parsing (API 30+), graceful degradation on API 26-29 (standard=UNKNOWN, null max speeds/BSS load)
-- [ ] 3.2 Create `CellularCollector`: TelephonyCallback (API 31+) / PhoneStateListener → CellularSnapshot
-- [ ] 3.3 Create `DnsCollector`: DnsResolver (API 29+) probes with rcode + latency, fallback to InetAddress for API 26-28, DoH cross-check for hijack detection
-- [ ] 3.4 Create `IpConfigCollector`: LinkProperties → IpConfig with anomaly flags
-- [ ] 3.5 Create `ProbeCollector`: icmp4a ping to each ProbeTarget (5 packets, all targets concurrent), OkHttp EventListener HTTP timing to connectivitycheck.gstatic.com
-- [ ] 3.6 Create `DeviceHealthCollector`: battery, Doze, Data Saver, airplane mode, VPN, memory, permissions
-- [ ] 3.7 Create `ConnDiagCollector`: ConnectivityDiagnosticsManager data (API 30+), null on API 26-29
-- [ ] 3.8 Create `SnapshotCaptureEngine`: orchestrate all collectors concurrently, assemble DiagnosticsSnapshot, detect transport changes during capture
-- [ ] 3.9 Write unit tests for each collector's data mapping logic (mock Android APIs where needed)
+- [x] 3.1 Create `WifiCollector`: WifiManager + WifiInfo (API 31+: via `NetworkCapabilities.getTransportInfo()`) → WifiSnapshot, scan results → WifiEnvironment, BSS Load IE parsing (API 30+), graceful degradation on API 26-29 (standard=UNKNOWN, null max speeds/BSS load)
+- [x] 3.2 Create `CellularCollector`: TelephonyCallback (API 31+) / PhoneStateListener → CellularSnapshot
+- [x] 3.3 Create `DnsCollector`: DnsResolver (API 29+) probes with rcode + latency, fallback to InetAddress for API 26-28, DoH cross-check for hijack detection
+- [x] 3.4 Create `IpConfigCollector`: LinkProperties → IpConfig with anomaly flags
+- [x] 3.5 Create `ProbeCollector`: icmp4a ping to each ProbeTarget (5 packets, all targets concurrent), HttpURLConnection HTTP timing to connectivitycheck.gstatic.com
+- [x] 3.6 Create `DeviceHealthCollector`: battery, Doze, Data Saver, airplane mode, VPN, memory, permissions
+- [x] 3.7 Create `ConnDiagCollector`: ConnectivityDiagnosticsManager data (API 30+), null on API 26-29
+- [x] 3.8 Create `SnapshotCaptureEngine`: orchestrate all collectors concurrently, assemble DiagnosticsSnapshot, detect transport changes during capture
+- [x] 3.9 Write unit tests for each collector's data mapping logic (mock Android APIs where needed)
 - [ ] 3.10 Write integration test for SnapshotCaptureEngine (instrumentation test on real device)
 
 ## 4. Comparison Engine (netdiag-comparison)
