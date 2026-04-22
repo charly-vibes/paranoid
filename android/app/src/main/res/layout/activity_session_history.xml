@@ -3,14 +3,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#121212"
-    android:padding="24dp">
+    android:background="#121212">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:layout_marginBottom="16dp">
+        android:paddingStart="4dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:fitsSystemWindows="true">
 
         <TextView
             android:id="@+id/btn_back"
@@ -32,13 +34,23 @@
             android:textStyle="bold" />
     </LinearLayout>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/sessions_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="16dp"
+        android:clipToPadding="false" />
+
     <TextView
+        android:id="@+id/empty_state"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="Session history — coming soon"
+        android:text="No sessions yet. Tap 'Run Diagnostics' to start."
         android:textColor="#555555"
         android:textStyle="italic"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        android:visibility="gone" />
 </LinearLayout>

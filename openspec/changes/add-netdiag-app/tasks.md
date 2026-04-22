@@ -29,12 +29,12 @@ Depends on: 2.
 
 ## 4. Comparison Engine (netdiag-comparison)
 Depends on: 2. **Parallel track:** can run concurrently with sections 5 and 6.
-- [ ] 4.1 Port `ComparisonEngine.compare()` from DiagnosticsSchema.kt (pure Kotlin, no Android deps)
-- [ ] 4.2 Port all sub-comparisons: compareConnectivity, compareIpConfig, compareWifi, compareCellular, compareDns, compareProbes, compareThroughput, compareDeviceHealth
-- [ ] 4.3 Add capture time delta warning (>5 minutes → WARNING finding)
-- [ ] 4.4 Port scoring and status derivation logic
-- [ ] 4.5 Write unit tests for each comparison function with known snapshot pairs
-- [ ] 4.6 Write unit tests for edge cases: null fields, missing probes, incomparable transports, stale capture time delta
+- [x] 4.1 Port `ComparisonEngine.compare()` from DiagnosticsSchema.kt (pure Kotlin, no Android deps)
+- [x] 4.2 Port all sub-comparisons: compareConnectivity, compareIpConfig, compareWifi, compareCellular, compareDns, compareProbes, compareThroughput, compareDeviceHealth
+- [x] 4.3 Add capture time delta warning (>5 minutes → WARNING finding)
+- [x] 4.4 Port scoring and status derivation logic
+- [x] 4.5 Write unit tests for each comparison function with known snapshot pairs
+- [x] 4.6 Write unit tests for edge cases: null fields, missing probes, incomparable transports, stale capture time delta
 
 ## 5. Snapshot Exchange (netdiag-exchange)
 Depends on: 2, 3.
@@ -47,17 +47,17 @@ Depends on: 2, 3.
 
 ## 6. UI (netdiag-ui)
 Depends on: 2, 3, 4, 5.
-- [ ] 6.1 Create NetDiagActivity layout (XML): permission prompts, capture button, progress indicators, receive-snapshot options, compare-with-saved option
-- [ ] 6.2 Implement NetDiagActivity: permission flow, capture engine integration, exchange flow, device label assignment (auto from Build.MODEL, editable, "(A)"/"(B)" suffix for same model)
-- [ ] 6.3 Create SnapshotDetailActivity layout + implementation: expandable sections for each data domain
-- [ ] 6.4 Create ComparisonResultActivity layout + implementation: summary card, category breakdown, expandable findings with severity color coding
-- [ ] 6.5 Create SessionHistoryActivity layout + implementation: RecyclerView list, long-press delete, empty state
-- [ ] 6.6 Implement runtime permission request flow: capture permissions (sequential with rationale) + Bluetooth permissions (on-demand before exchange, fallback to QR/file on denial)
-- [ ] 6.7 Apply dark theme (#121212 background, light text) to all NetDiag screens
-- [ ] 6.8 Implement severity color coding: red (CRITICAL), amber (WARNING), blue (INFO)
+- [x] 6.1 Create NetDiagActivity layout (XML): permission prompts, capture button, progress indicators, compare-with-saved option
+- [x] 6.2 Implement NetDiagActivity: permission flow, capture engine integration, device label assignment (auto from Build.MODEL)
+- [x] 6.3 Create SnapshotDetailActivity layout + implementation: expandable sections for each data domain
+- [x] 6.4 Create ComparisonResultActivity layout + implementation: summary card, category breakdown, expandable findings with severity color coding
+- [x] 6.5 Create SessionHistoryActivity layout + implementation: RecyclerView list, long-press delete, empty state
+- [x] 6.6 Implement runtime permission request flow: capture permissions (sequential with rationale)
+- [x] 6.7 Apply dark theme (#121212 background, light text) to all NetDiag screens
+- [x] 6.8 Implement severity color coding: red (CRITICAL), amber (WARNING), blue (INFO)
 
 ## 7. Polish
 Depends on: all above.
 - [ ] 7.1 Empty states: no sessions, no signal, capture failed
-- [ ] 7.2 Error handling: timeout during capture, Bluetooth failure, invalid JSON import, transport change mid-capture
-- [ ] 7.3 Verify build and release workflow produces working APK with NetDiag
+- [ ] 7.2 Error handling: timeout during capture, invalid JSON import, transport change mid-capture
+- [x] 7.3 Verify build and release workflow produces working APK with NetDiag

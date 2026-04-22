@@ -30,6 +30,12 @@ interface SnapshotDao {
 
     @Query("SELECT * FROM netdiag_snapshots WHERE sessionId = :sessionId")
     suspend fun getBySessionId(sessionId: String): List<DiagnosticsSnapshotEntity>
+
+    @Query("SELECT * FROM netdiag_snapshots WHERE id = :id")
+    suspend fun getById(id: String): DiagnosticsSnapshotEntity?
+
+    @Query("SELECT * FROM netdiag_snapshots ORDER BY capturedAtMs DESC")
+    suspend fun getAll(): List<DiagnosticsSnapshotEntity>
 }
 
 @Dao
@@ -39,4 +45,7 @@ interface ComparisonDao {
 
     @Query("SELECT * FROM netdiag_comparisons WHERE sessionId = :sessionId")
     suspend fun getBySessionId(sessionId: String): List<DiagnosticsComparisonEntity>
+
+    @Query("SELECT * FROM netdiag_comparisons WHERE id = :id")
+    suspend fun getById(id: String): DiagnosticsComparisonEntity?
 }
