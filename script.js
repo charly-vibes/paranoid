@@ -50,7 +50,11 @@ function createAppItem(app) {
     div.className = 'app-item';
 
     const link = document.createElement('a');
-    link.href = `${app.name}/`;
+    link.href = '#';
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+        showMarkdown(formatAppName(app.name) + ' — Spec', `${app.name}/spec/functionality.md`);
+    });
 
     const nameDiv = document.createElement('div');
     nameDiv.className = 'app-name';
