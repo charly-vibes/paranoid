@@ -12,6 +12,7 @@ first=true
 # Discover apps: directories that have a spec/functionality.md
 while IFS= read -r spec; do
     app="$(dirname "$(dirname "$spec")")"
+    app="${app#./}"
     [ -d "$app" ] || continue
 
     # Description: first non-empty, non-heading line after ## Purpose
