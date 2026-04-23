@@ -38,11 +38,11 @@ Depends on: 2. **Parallel track:** can run concurrently with sections 5 and 6.
 
 ## 5. Snapshot Exchange (netdiag-exchange)
 Depends on: 2, 3.
-- [ ] 5.1 Implement Bluetooth RFCOMM exchange: server/client roles, snapshot JSON transfer, runtime permissions (API 31+), error handling for connection drops
-- [ ] 5.2 Implement QR code encoding (chunked at ~1.5 KB/code with sequence headers) and decoding (sequential scan with missing-chunk prompts)
-- [ ] 5.3 Implement file export via FileProvider + share sheet (JSON)
-- [ ] 5.4 Implement file import via share intent and file picker with malformed-JSON error handling
-- [ ] 5.5 Write unit tests for QR chunking/reassembly logic
+- [x] 5.1 Implement Bluetooth RFCOMM exchange: server/client roles, snapshot JSON transfer, runtime permissions (API 31+), error handling for connection drops
+- [x] 5.2 Implement QR code encoding (chunked at ~1.5 KB/code with sequence headers) and decoding (sequential scan with missing-chunk prompts)
+- [x] 5.3 Implement file export via FileProvider + share sheet (JSON)
+- [x] 5.4 Implement file import via share intent and file picker with malformed-JSON error handling
+- [x] 5.5 Write unit tests for QR chunking/reassembly logic
 - [ ] 5.6 Write instrumentation tests for Bluetooth and file exchange
 
 ## 6. UI (netdiag-ui)
