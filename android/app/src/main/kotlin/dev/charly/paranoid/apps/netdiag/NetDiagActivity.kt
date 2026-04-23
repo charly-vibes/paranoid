@@ -2,8 +2,10 @@ package dev.charly.paranoid.apps.netdiag
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -11,6 +13,7 @@ import android.provider.Settings
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -42,6 +45,10 @@ class NetDiagActivity : AppCompatActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { updatePermissionState() }
+
+    private val importFileLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { importSnapshotFromUri(it) } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -116,6 +123,12 @@ class NetDiagActivity : AppCompatActivity() {
 
     @SuppressLint("SetTextI18n")
     private fun startCapture() {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        if (cm.activeNetwork == null) {
+            showError("No network connection. Connect to Wi-Fi or cellular and try again.")
+            return
+        }
+
         val btn = findViewById<TextView>(R.id.btn_capture)
         btn.isEnabled = false
         btn.text = "Capturing…"
@@ -159,6 +172,14 @@ class NetDiagActivity : AppCompatActivity() {
                     capturedSnapshot = snapshot
                     capturedSessionId = sessionId
                     showResult(snapshot)
+
+                    if (result.transportChanged) {
+                        Toast.makeText(
+                            this@NetDiagActivity,
+                            "⚠ Network changed during capture. Results may be inconsistent.",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
                 }
                 is SnapshotCaptureEngine.CaptureResult.Error -> {
                     showError(result.message)
@@ -221,22 +242,63 @@ class NetDiagActivity : AppCompatActivity() {
             if (others.isEmpty()) {
                 AlertDialog.Builder(this@NetDiagActivity)
                     .setTitle("No saved snapshots")
-                    .setMessage("Capture a snapshot on another device first, or run diagnostics again later to compare.")
-                    .setPositiveButton("OK", null)
+                    .setMessage("Capture a snapshot on another device first, or import one from a file.")
+                    .setPositiveButton("Import from file") { _, _ ->
+                        importFileLauncher.launch("application/json")
+                    }
+                    .setNegativeButton("Cancel", null)
                     .show()
                 return@launch
             }
 
             val dateFmt = java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.US)
             val labels = others.map { "${it.deviceLabel} — ${dateFmt.format(java.util.Date(it.capturedAtMs))}" }
+                .plus("Import from file…")
 
             AlertDialog.Builder(this@NetDiagActivity)
                 .setTitle("Compare with")
                 .setItems(labels.toTypedArray()) { _, which ->
-                    runComparison(current, others[which])
+                    if (which < others.size) {
+                        runComparison(current, others[which])
+                    } else {
+                        importFileLauncher.launch("application/json")
+                    }
                 }
                 .setNegativeButton("Cancel", null)
                 .show()
+        }
+    }
+
+    private fun importSnapshotFromUri(uri: Uri) {
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                SnapshotFileExchange.importFromUri(this@NetDiagActivity, uri)
+            }
+
+            result.fold(
+                onSuccess = { snapshot ->
+                    val sessionId = capturedSessionId ?: UUID.randomUUID().toString()
+                    val entity = DiagnosticsSnapshotEntity(
+                        id = snapshot.id,
+                        sessionId = sessionId,
+                        capturedAtMs = snapshot.capturedAtMs,
+                        deviceLabel = snapshot.deviceLabel,
+                        deviceModel = snapshot.deviceModel,
+                        snapshotJson = json.encodeToString(DiagnosticsSnapshot.serializer(), snapshot),
+                    )
+                    withContext(Dispatchers.IO) { db.snapshotDao().insert(entity) }
+
+                    val current = capturedSnapshot
+                    if (current != null) {
+                        runComparison(current, entity)
+                    } else {
+                        Toast.makeText(this@NetDiagActivity, "Snapshot imported", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                onFailure = { error ->
+                    showError(error.message ?: "Failed to import snapshot")
+                },
+            )
         }
     }
 

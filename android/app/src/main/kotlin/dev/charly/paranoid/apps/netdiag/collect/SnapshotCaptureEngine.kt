@@ -9,16 +9,33 @@ import dev.charly.paranoid.apps.netdiag.data.Severity
 import dev.charly.paranoid.apps.netdiag.data.Transport
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
 
 class SnapshotCaptureEngine(private val context: Context) {
 
+    companion object {
+        private const val CAPTURE_TIMEOUT_MS = 30_000L
+    }
+
     sealed class CaptureResult {
-        data class Success(val snapshot: DiagnosticsSnapshot) : CaptureResult()
+        data class Success(
+            val snapshot: DiagnosticsSnapshot,
+            val transportChanged: Boolean = false,
+        ) : CaptureResult()
         data class Error(val message: String) : CaptureResult()
     }
 
     suspend fun capture(
+        deviceLabel: String,
+        sessionId: String,
+    ): CaptureResult {
+        return withTimeoutOrNull(CAPTURE_TIMEOUT_MS) {
+            captureInternal(deviceLabel, sessionId)
+        } ?: CaptureResult.Error("Capture timed out after ${CAPTURE_TIMEOUT_MS / 1000} seconds. Check your network connection and try again.")
+    }
+
+    private suspend fun captureInternal(
         deviceLabel: String,
         sessionId: String,
     ): CaptureResult = coroutineScope {
@@ -68,6 +85,7 @@ class SnapshotCaptureEngine(private val context: Context) {
         val endTransport = detectTransport(
             cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
         )
+        val transportChanged = startTransport != endTransport
 
         val isValidated = networkCaps?.hasCapability(
             NetworkCapabilities.NET_CAPABILITY_VALIDATED
@@ -108,7 +126,7 @@ class SnapshotCaptureEngine(private val context: Context) {
             connectivityDiagnostics = connDiag,
         )
 
-        CaptureResult.Success(snapshot)
+        CaptureResult.Success(snapshot, transportChanged)
     }
 
     private fun detectTransport(caps: NetworkCapabilities?): Transport {

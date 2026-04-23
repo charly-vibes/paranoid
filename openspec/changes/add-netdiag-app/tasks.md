@@ -58,6 +58,6 @@ Depends on: 2, 3, 4, 5.
 
 ## 7. Polish
 Depends on: all above.
-- [ ] 7.1 Empty states: no sessions, no signal, capture failed
-- [ ] 7.2 Error handling: timeout during capture, invalid JSON import, transport change mid-capture
+- [x] 7.1 Empty states: no sessions, no signal, capture failed
+- [x] 7.2 Error handling: timeout during capture, invalid JSON import, transport change mid-capture
 - [x] 7.3 Verify build and release workflow produces working APK with NetDiag
