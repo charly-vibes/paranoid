@@ -67,29 +67,29 @@
 - [ ] 3.6 **Manual:** verify the Settings handoff works on a device.
 
 ### 3B. Usage queries
-- [ ] 3.7 **Red:** write a failing test for mapping normalized Android usage results into the canonical daily domain input model.
-- [ ] 3.8 **Green:** implement the smallest `UsageStatsManager` adapter for Today summaries.
-- [ ] 3.9 **Red:** write a failing test for querying app activity inside the configured overnight window.
-- [ ] 3.10 **Green:** implement the smallest overnight usage query adapter to make the test pass.
-- [ ] 3.11 **Red:** write a failing test for package normalization, including missing labels and noisy/system packages.
-- [ ] 3.12 **Green:** implement the smallest normalization/filtering behavior required by the test.
-- [ ] 3.13 **Refactor:** tidy Android usage-query mapping and boundaries.
+- [x] 3.7 **Red:** write a failing test for mapping normalized Android usage results into the canonical daily domain input model.
+- [x] 3.8 **Green:** implement the smallest `UsageStatsManager` adapter for Today summaries.
+- [x] 3.9 **Red:** write a failing test for querying app activity inside the configured overnight window.
+- [x] 3.10 **Green:** implement the smallest overnight usage query adapter to make the test pass.
+- [x] 3.11 **Red:** write a failing test for package normalization, including missing labels and noisy/system packages.
+- [x] 3.12 **Green:** implement the smallest normalization/filtering behavior required by the test.
+- [x] 3.13 **Refactor:** tidy Android usage-query mapping and boundaries.
 
 ### 3C. Battery snapshot collection
-- [ ] 3.14 **Red:** write a failing unit test for a battery-signal mapper that converts Android battery signals into `BatterySnapshot` values.
-- [ ] 3.15 **Green:** implement the smallest mapper to make the test pass.
-- [ ] 3.16 **Red:** write a failing integration test for persisting mapped `BatterySnapshot` records through the collector seam.
-- [ ] 3.17 **Green:** implement the smallest battery receiver/collector that persists snapshots.
-- [ ] 3.18 **Red:** write a failing test for v1 reliability hooks: app-open and power-state-change capture.
-- [ ] 3.19 **Green:** implement only the hooks required to satisfy the tests.
-- [ ] 3.20 **Refactor:** reduce coupling between mappers, collectors, persistence, and app lifecycle hooks.
+- [x] 3.14 **Red:** write a failing unit test for a battery-signal mapper that converts Android battery signals into `BatterySnapshot` values.
+- [x] 3.15 **Green:** implement the smallest mapper to make the test pass.
+- [x] 3.16 **Red:** write a failing integration test for persisting mapped `BatterySnapshot` records through the collector seam.
+- [x] 3.17 **Green:** implement the smallest battery receiver/collector that persists snapshots.
+- [x] 3.18 **Red:** write a failing test for v1 reliability hooks: app-open and power-state-change capture.
+- [x] 3.19 **Green:** implement only the hooks required to satisfy the tests.
+- [x] 3.20 **Refactor:** reduce coupling between mappers, collectors, persistence, and app lifecycle hooks.
 - [ ] 3.21 **Manual:** verify overnight snapshot behavior on a real device.
 
 **Acceptance criteria:**
 - [x] 3.22 The app shows a clear action when usage access is missing.
-- [ ] 3.23 The app can persist battery snapshots without network access.
-- [ ] 3.24 The app can query app activity for the configured overnight window.
-- [ ] 3.25 The automatable tests cover in-app gating and data mapping seams, while device-only flows are called out for manual verification.
+- [x] 3.23 The app can persist battery snapshots without network access.
+- [x] 3.24 The app can query app activity for the configured overnight window.
+- [x] 3.25 The automatable tests cover in-app gating and data mapping seams, while device-only flows are called out for manual verification.
 
 ## 4. Ticket: Implement export and sharing
 **Goal:** make it easy to move audit results out of the app.
