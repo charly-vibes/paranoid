@@ -1,0 +1,1 @@
+Implemented PARANOID-4tb usage-access gating for UsageAudit with a testable AppOps-backed checker, a minimal in-app gate screen + Settings handoff, and instrumentation coverage via injectable dependencies. Rule-of-5 review found hardcoded strings and an unnecessary navigator parameter; both were refactored before commit.

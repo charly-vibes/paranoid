@@ -59,11 +59,11 @@
 **Goal:** connect Android system data sources to the domain layer with clear permission handling.
 
 ### 3A. Usage access gating
-- [ ] 3.1 **Red:** write a failing test for the permission-check abstraction used by usage-access-gated screens.
-- [ ] 3.2 **Green:** implement the smallest usage-access check to make the test pass.
-- [ ] 3.3 **Red:** write a failing UI/instrumentation test for the missing-usage-access empty state inside the app.
-- [ ] 3.4 **Green:** implement the smallest in-app empty state and Settings handoff UI to make the test pass.
-- [ ] 3.5 **Refactor:** simplify permission-gating wiring and copy.
+- [x] 3.1 **Red:** write a failing test for the permission-check abstraction used by usage-access-gated screens.
+- [x] 3.2 **Green:** implement the smallest usage-access check to make the test pass.
+- [x] 3.3 **Red:** write a failing UI/instrumentation test for the missing-usage-access empty state inside the app.
+- [x] 3.4 **Green:** implement the smallest in-app empty state and Settings handoff UI to make the test pass.
+- [x] 3.5 **Refactor:** simplify permission-gating wiring and copy.
 - [ ] 3.6 **Manual:** verify the Settings handoff works on a device.
 
 ### 3B. Usage queries
@@ -86,7 +86,7 @@
 - [ ] 3.21 **Manual:** verify overnight snapshot behavior on a real device.
 
 **Acceptance criteria:**
-- [ ] 3.22 The app shows a clear action when usage access is missing.
+- [x] 3.22 The app shows a clear action when usage access is missing.
 - [ ] 3.23 The app can persist battery snapshots without network access.
 - [ ] 3.24 The app can query app activity for the configured overnight window.
 - [ ] 3.25 The automatable tests cover in-app gating and data mapping seams, while device-only flows are called out for manual verification.
