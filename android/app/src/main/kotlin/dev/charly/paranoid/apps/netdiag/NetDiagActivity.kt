@@ -18,6 +18,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.netdiag.collect.SnapshotCaptureEngine
+import dev.charly.paranoid.apps.netdiag.exchange.SnapshotFileExchange
 import dev.charly.paranoid.apps.netdiag.data.ComparisonEngine
 import dev.charly.paranoid.apps.netdiag.data.DiagnosticsComparison
 import dev.charly.paranoid.apps.netdiag.data.DiagnosticsComparisonEntity
@@ -56,6 +57,7 @@ class NetDiagActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_capture).setOnClickListener { startCapture() }
         findViewById<TextView>(R.id.btn_view_details).setOnClickListener { viewDetails() }
         findViewById<TextView>(R.id.btn_compare).setOnClickListener { compareWithSaved() }
+        findViewById<TextView>(R.id.btn_share).setOnClickListener { shareSnapshot() }
 
         requestPermissions()
     }
@@ -193,6 +195,12 @@ class NetDiagActivity : AppCompatActivity() {
             text = message
             visibility = View.VISIBLE
         }
+    }
+
+    private fun shareSnapshot() {
+        val snapshot = capturedSnapshot ?: return
+        val intent = SnapshotFileExchange.createExportIntent(this, snapshot)
+        startActivity(Intent.createChooser(intent, "Share snapshot"))
     }
 
     private fun viewDetails() {
