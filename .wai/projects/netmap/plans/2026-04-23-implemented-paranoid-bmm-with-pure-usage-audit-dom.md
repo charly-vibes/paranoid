@@ -1,0 +1,1 @@
+Implemented PARANOID-bmm with pure usage-audit domain models and calculators (daily aggregation, overnight audit warnings, charging transitions, cross-midnight-safe millis) plus minimal Room battery snapshot persistence wired into ParanoidDatabase.

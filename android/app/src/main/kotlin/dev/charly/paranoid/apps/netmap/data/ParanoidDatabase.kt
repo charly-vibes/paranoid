@@ -12,6 +12,8 @@ import dev.charly.paranoid.apps.netdiag.data.DiagnosticsSessionEntity
 import dev.charly.paranoid.apps.netdiag.data.DiagnosticsSnapshotEntity
 import dev.charly.paranoid.apps.netdiag.data.SessionDao
 import dev.charly.paranoid.apps.netdiag.data.SnapshotDao
+import dev.charly.paranoid.apps.usageaudit.BatterySnapshotDao
+import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
 
 @Database(
     entities = [
@@ -20,8 +22,9 @@ import dev.charly.paranoid.apps.netdiag.data.SnapshotDao
         DiagnosticsSessionEntity::class,
         DiagnosticsSnapshotEntity::class,
         DiagnosticsComparisonEntity::class,
+        BatterySnapshotEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -30,6 +33,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
     abstract fun sessionDao(): SessionDao
     abstract fun snapshotDao(): SnapshotDao
     abstract fun comparisonDao(): ComparisonDao
+    abstract fun batterySnapshotDao(): BatterySnapshotDao
 
     companion object {
         @Volatile
@@ -71,6 +75,20 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS usageaudit_battery_snapshots (
+                        timestampMillis INTEGER NOT NULL PRIMARY KEY,
+                        batteryPercent INTEGER NOT NULL,
+                        chargingState TEXT NOT NULL,
+                        batteryStatus TEXT,
+                        batteryHealth TEXT
+                    )"""
+                )
+            }
+        }
+
         fun getInstance(context: Context): ParanoidDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -78,7 +96,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                     ParanoidDatabase::class.java,
                     "paranoid.db"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build().also { instance = it }
             }
     }

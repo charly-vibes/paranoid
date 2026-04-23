@@ -21,39 +21,39 @@
 **Goal:** create the data model and pure logic for daily usage and overnight audits.
 
 ### 2A. Daily usage aggregation
-- [ ] 2.1 **Red:** write a failing unit test for total daily foreground usage time.
-- [ ] 2.2 **Green:** implement the smallest daily aggregation logic to make the total-usage test pass.
-- [ ] 2.3 **Red:** write a failing unit test for ranking apps by foreground duration.
-- [ ] 2.4 **Green:** implement the smallest ranking logic to make the test pass.
-- [ ] 2.5 **Refactor:** tidy naming, data shapes, and duplication in the daily usage aggregator.
+- [x] 2.1 **Red:** write a failing unit test for total daily foreground usage time.
+- [x] 2.2 **Green:** implement the smallest daily aggregation logic to make the total-usage test pass.
+- [x] 2.3 **Red:** write a failing unit test for ranking apps by foreground duration.
+- [x] 2.4 **Green:** implement the smallest ranking logic to make the test pass.
+- [x] 2.5 **Refactor:** tidy naming, data shapes, and duplication in the daily usage aggregator.
 
 ### 2B. Overnight audit calculation
-- [ ] 2.6 **Red:** write a failing unit test for computing overnight battery start/end values and delta from snapshots.
-- [ ] 2.7 **Green:** implement the smallest overnight battery summary logic to make the delta test pass.
-- [ ] 2.8 **Red:** write a failing unit test for listing apps with observed foreground usage overlapping the overnight window.
-- [ ] 2.9 **Green:** implement the smallest app-activity correlation logic to make the test pass.
-- [ ] 2.10 **Red:** write a failing unit test for incomplete-window warnings when snapshots do not fully cover the requested window.
-- [ ] 2.11 **Green:** implement the smallest incomplete-data warning logic to make the test pass.
-- [ ] 2.12 **Red:** write a failing unit test for a night window with battery drop but no observed app activity.
-- [ ] 2.13 **Green:** implement the smallest honest empty-result behavior for no-observed-activity nights.
-- [ ] 2.14 **Red:** write a failing unit test for charging transitions inside the overnight window.
-- [ ] 2.15 **Green:** implement the smallest mixed charge/discharge summary behavior for that case.
-- [ ] 2.16 **Red:** write a failing unit test for cross-midnight and timezone-safe overnight window summaries.
-- [ ] 2.17 **Green:** implement the smallest time-safe summary behavior to make the test pass.
-- [ ] 2.18 **Refactor:** tidy the overnight audit calculator and shared summary types.
+- [x] 2.6 **Red:** write a failing unit test for computing overnight battery start/end values and delta from snapshots.
+- [x] 2.7 **Green:** implement the smallest overnight battery summary logic to make the delta test pass.
+- [x] 2.8 **Red:** write a failing unit test for listing apps with observed foreground usage overlapping the overnight window.
+- [x] 2.9 **Green:** implement the smallest app-activity correlation logic to make the test pass.
+- [x] 2.10 **Red:** write a failing unit test for incomplete-window warnings when snapshots do not fully cover the requested window.
+- [x] 2.11 **Green:** implement the smallest incomplete-data warning logic to make the test pass.
+- [x] 2.12 **Red:** write a failing unit test for a night window with battery drop but no observed app activity.
+- [x] 2.13 **Green:** implement the smallest honest empty-result behavior for no-observed-activity nights.
+- [x] 2.14 **Red:** write a failing unit test for charging transitions inside the overnight window.
+- [x] 2.15 **Green:** implement the smallest mixed charge/discharge summary behavior for that case.
+- [x] 2.16 **Red:** write a failing unit test for cross-midnight and timezone-safe overnight window summaries.
+- [x] 2.17 **Green:** implement the smallest time-safe summary behavior to make the test pass.
+- [x] 2.18 **Refactor:** tidy the overnight audit calculator and shared summary types.
 
 ### 2C. Persistence model
-- [ ] 2.19 **Red:** write a failing unit/integration test for persisting and reading `BatterySnapshot` records.
-- [ ] 2.20 **Green:** implement the smallest Room entities/DAO needed to persist battery snapshots.
-- [ ] 2.21 **Red:** write a failing test only if v1 truly needs persisted derived reports for History/Export.
-- [ ] 2.22 **Green:** implement only the persistence actually required by the failing tests.
-- [ ] 2.23 **Refactor:** simplify persistence boundaries and remove unnecessary storage.
+- [x] 2.19 **Red:** write a failing unit/integration test for persisting and reading `BatterySnapshot` records.
+- [x] 2.20 **Green:** implement the smallest Room entities/DAO needed to persist battery snapshots.
+- [x] 2.21 **Red:** write a failing test only if v1 truly needs persisted derived reports for History/Export.
+- [x] 2.22 **Green:** implement only the persistence actually required by the failing tests.
+- [x] 2.23 **Refactor:** simplify persistence boundaries and remove unnecessary storage.
 
 **Acceptance criteria:**
-- [ ] 2.24 Daily summaries produce total usage time and ranked apps by foreground duration.
-- [ ] 2.25 Overnight summaries produce start/end timestamps, battery start/end percentages, and total battery delta.
-- [ ] 2.26 Overnight summaries can return “incomplete data” warnings when snapshots do not fully cover the requested window.
-- [ ] 2.27 Persisted storage is limited to what v1 needs for local audit history and export.
+- [x] 2.24 Daily summaries produce total usage time and ranked apps by foreground duration.
+- [x] 2.25 Overnight summaries produce start/end timestamps, battery start/end percentages, and total battery delta.
+- [x] 2.26 Overnight summaries can return “incomplete data” warnings when snapshots do not fully cover the requested window.
+- [x] 2.27 Persisted storage is limited to what v1 needs for local audit history and export.
 
 ## 3. Ticket: Add Android data collection and permission flow
 **Goal:** connect Android system data sources to the domain layer with clear permission handling.
