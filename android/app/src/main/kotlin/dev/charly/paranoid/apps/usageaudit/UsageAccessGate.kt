@@ -52,6 +52,10 @@ class AndroidUsageAccessSettingsNavigator(
     }
 }
 
+fun interface UsageAuditDataProvider {
+    fun load(scope: kotlinx.coroutines.CoroutineScope, callback: (today: DailyUsageSummary?, lastNight: OvernightAudit?) -> Unit)
+}
+
 object UsageAuditDependencies {
     @Volatile
     var usageAccessCheckerFactory: (Context) -> UsageAccessChecker = { context ->
@@ -63,8 +67,14 @@ object UsageAuditDependencies {
         AndroidUsageAccessSettingsNavigator(context)
     }
 
+    @Volatile
+    var dataProviderFactory: (Context) -> UsageAuditDataProvider = { context ->
+        AndroidUsageAuditDataProvider(context)
+    }
+
     fun reset() {
         usageAccessCheckerFactory = { context -> AndroidUsageAccessChecker(context) }
         settingsNavigatorFactory = { context -> AndroidUsageAccessSettingsNavigator(context) }
+        dataProviderFactory = { context -> AndroidUsageAuditDataProvider(context) }
     }
 }

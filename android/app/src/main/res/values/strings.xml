@@ -12,4 +12,13 @@
     <string name="usage_access_open_settings">Open Usage Access Settings</string>
     <string name="usage_access_enabled_title">Usage access enabled</string>
     <string name="usage_access_enabled_message">Today and Last Night reports can now query local app activity.</string>
+    <string name="today_section_title">Today</string>
+    <string name="today_empty_state">No usage data available for today.</string>
+    <string name="today_total_label">total observed activity</string>
+    <string name="last_night_section_title">Last Night</string>
+    <string name="last_night_empty_state">No overnight data available yet.</string>
+    <string name="last_night_start_label">start</string>
+    <string name="last_night_end_label">end</string>
+    <string name="last_night_delta_label">change</string>
+    <string name="attribution_disclaimer">Battery figures are observations, not exact per-app measurements. Actual per-app drain cannot be determined from these readings.</string>
 </resources>

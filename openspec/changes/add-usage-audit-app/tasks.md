@@ -120,20 +120,20 @@
 **Goal:** ship the smallest useful UI with the three agreed screens.
 
 ### 5A. Today screen
-- [ ] 5.1 **Red:** write a failing UI test for Today screen empty state.
-- [ ] 5.2 **Green:** implement the smallest Today screen empty state to make the test pass.
-- [ ] 5.3 **Red:** write a failing UI test for Today screen populated summary and top apps.
-- [ ] 5.4 **Green:** implement the smallest Today screen populated state to make the test pass.
-- [ ] 5.5 **Refactor:** simplify Today screen layout and binding logic.
+- [x] 5.1 **Red:** write a failing UI test for Today screen empty state.
+- [x] 5.2 **Green:** implement the smallest Today screen empty state to make the test pass.
+- [x] 5.3 **Red:** write a failing UI test for Today screen populated summary and top apps.
+- [x] 5.4 **Green:** implement the smallest Today screen populated state to make the test pass.
+- [x] 5.5 **Refactor:** simplify Today screen layout and binding logic.
 
 ### 5B. Last Night screen
-- [ ] 5.6 **Red:** write a failing UI test for Last Night screen summary content.
-- [ ] 5.7 **Green:** implement the smallest Last Night summary UI to make the test pass.
-- [ ] 5.8 **Red:** write a failing UI test for incomplete-data warning, no-observed-activity wording, and attribution wording.
-- [ ] 5.9 **Green:** implement the smallest warning/wording UI to make the test pass.
-- [ ] 5.10 **Red:** write a failing UI test for nights that include charging transitions.
-- [ ] 5.11 **Green:** implement the smallest mixed charge/discharge presentation to make the test pass.
-- [ ] 5.12 **Refactor:** simplify Last Night presentation and labels.
+- [x] 5.6 **Red:** write a failing UI test for Last Night screen summary content.
+- [x] 5.7 **Green:** implement the smallest Last Night summary UI to make the test pass.
+- [x] 5.8 **Red:** write a failing UI test for incomplete-data warning, no-observed-activity wording, and attribution wording.
+- [x] 5.9 **Green:** implement the smallest warning/wording UI to make the test pass.
+- [x] 5.10 **Red:** write a failing UI test for nights that include charging transitions.
+- [x] 5.11 **Green:** implement the smallest mixed charge/discharge presentation to make the test pass.
+- [x] 5.12 **Refactor:** simplify Last Night presentation and labels.
 
 ### 5C. History/Export screen
 - [ ] 5.13 **Red:** write a failing UI test for History/Export actions.
@@ -141,9 +141,9 @@
 - [ ] 5.15 **Refactor:** simplify navigation and action wiring.
 
 ### 5D. Presentation polish
-- [ ] 5.16 **Red:** write a failing UI test for attribution-limit copy visibility where required.
-- [ ] 5.17 **Green:** implement the smallest copy/layout changes to make the test pass.
-- [ ] 5.18 **Refactor:** tidy layouts/resources for dark theme and OLED-friendly presentation.
+- [x] 5.16 **Red:** write a failing UI test for attribution-limit copy visibility where required.
+- [x] 5.17 **Green:** implement the smallest copy/layout changes to make the test pass.
+- [x] 5.18 **Refactor:** tidy layouts/resources for dark theme and OLED-friendly presentation.
 
 **Acceptance criteria:**
 - [ ] 5.19 The Today screen shows a useful empty state when no data is available.
