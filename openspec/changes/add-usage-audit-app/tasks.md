@@ -153,16 +153,16 @@
 ## 6. Ticket: Integrate the mini-app into paranoid
 **Goal:** register the new mini-app and align project docs.
 
-- [ ] 6.1 **Red:** write a failing integration/UI check for the direct in-app navigation entry that launches the mini-app from the hub/main navigation.
-- [ ] 6.2 **Green:** add the new mini-app activity, resources, and manifest/navigation wiring to make the test pass.
-- [ ] 6.3 **Red:** identify any missing export/file-provider wiring through a failing integration check.
-- [ ] 6.4 **Green:** add only the required export/file-provider wiring to make the check pass.
-- [ ] 6.5 **Refactor:** tidy manifest/resource/navigation duplication.
-- [ ] 6.6 Add or update the mini-app functionality spec under `usageaudit/spec/functionality.md` to match the implemented behavior.
+- [x] 6.1 **Red:** write a failing integration/UI check for the direct in-app navigation entry that launches the mini-app from the hub/main navigation.
+- [x] 6.2 **Green:** add the new mini-app activity, resources, and manifest/navigation wiring to make the test pass.
+- [x] 6.3 **Red:** identify any missing export/file-provider wiring through a failing integration check.
+- [x] 6.4 **Green:** add only the required export/file-provider wiring to make the check pass.
+- [x] 6.5 **Refactor:** tidy manifest/resource/navigation duplication.
+- [x] 6.6 Add or update the mini-app functionality spec under `usageaudit/spec/functionality.md` to match the implemented behavior.
 
 **Acceptance criteria:**
-- [ ] 6.7 The mini-app is launchable from the main app via one direct navigation entry.
-- [ ] 6.8 The implementation-facing mini-app spec matches the shipped behavior.
+- [x] 6.7 The mini-app is launchable from the main app via one direct navigation entry.
+- [x] 6.8 The implementation-facing mini-app spec matches the shipped behavior.
 
 ## 7. Ticket: Validate on device
 **Goal:** verify correctness, honesty of presentation, and basic operational usefulness.
