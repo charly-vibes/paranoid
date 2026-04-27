@@ -146,9 +146,9 @@
 - [x] 5.18 **Refactor:** tidy layouts/resources for dark theme and OLED-friendly presentation.
 
 **Acceptance criteria:**
-- [ ] 5.19 The Today screen shows a useful empty state when no data is available.
-- [ ] 5.20 The Last Night screen clearly distinguishes observed activity from inferred drain contribution.
-- [ ] 5.21 The UI remains Views-based, minimal, and offline-first.
+- [x] 5.19 The Today screen shows a useful empty state when no data is available.
+- [x] 5.20 The Last Night screen clearly distinguishes observed activity from inferred drain contribution.
+- [x] 5.21 The UI remains Views-based, minimal, and offline-first.
 
 ## 6. Ticket: Integrate the mini-app into paranoid
 **Goal:** register the new mini-app and align project docs.
@@ -167,17 +167,17 @@
 ## 7. Ticket: Validate on device
 **Goal:** verify correctness, honesty of presentation, and basic operational usefulness.
 
-- [ ] 7.1 Run unit tests for aggregators, summaries, exporters, and time-window edge cases.
+- [x] 7.1 Run unit tests for aggregators, summaries, exporters, and time-window edge cases.
 - [ ] 7.2 Run instrumentation/UI tests for in-app permission gating, empty states, and screen flows.
 - [ ] 7.3 Manually verify daytime usage summaries on a device with known app activity.
 - [ ] 7.4 Manually verify the Settings handoff for usage access on a device.
 - [ ] 7.5 Manually verify overnight battery audit behavior across at least one real night window.
 - [ ] 7.6 Manually verify wording for nights with no observed app activity and for nights with charging transitions.
 - [ ] 7.7 Verify CSV and plain-text share flows with at least one external target app.
-- [ ] 7.8 Perform a wording audit to ensure user-facing battery text never claims exact per-app drain.
-- [ ] 7.9 Tidy documentation and mark all completed tasks as done.
+- [x] 7.8 Perform a wording audit to ensure user-facing battery text never claims exact per-app drain.
+- [x] 7.9 Tidy documentation and mark all completed tasks as done.
 
 **Acceptance criteria:**
-- [ ] 7.10 Test runs are green.
+- [x] 7.10 Test runs are green.
 - [ ] 7.11 Manual checks confirm the app reports battery loss honestly without claiming exact per-app drain.
 - [ ] 7.12 Export/share flows produce usable outputs for real-world sharing.
