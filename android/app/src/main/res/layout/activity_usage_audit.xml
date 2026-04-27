@@ -143,6 +143,47 @@
                     android:orientation="vertical" />
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/today_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/btn_share_today"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="@string/share_summary"
+                    android:textColor="#64B5F6"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/app_item_bg"
+                    android:padding="12dp"
+                    android:layout_marginEnd="4dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/btn_export_today_csv"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="@string/export_csv"
+                    android:textColor="#64B5F6"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/app_item_bg"
+                    android:padding="12dp"
+                    android:layout_marginStart="4dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
             <!-- Last Night section -->
             <TextView
                 android:layout_width="wrap_content"
@@ -274,6 +315,47 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/last_night_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:id="@+id/btn_share_last_night"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="@string/share_summary"
+                    android:textColor="#64B5F6"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/app_item_bg"
+                    android:padding="12dp"
+                    android:layout_marginEnd="4dp"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/btn_export_last_night_csv"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="@string/export_csv"
+                    android:textColor="#64B5F6"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/app_item_bg"
+                    android:padding="12dp"
+                    android:layout_marginStart="4dp"
+                    android:clickable="true"
+                    android:focusable="true" />
             </LinearLayout>
 
             <!-- Attribution disclaimer -->

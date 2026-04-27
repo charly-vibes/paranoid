@@ -95,26 +95,26 @@
 **Goal:** make it easy to move audit results out of the app.
 
 ### 4A. Text summaries
-- [ ] 4.1 **Red:** write a failing unit test for Today plain-text summary formatting.
-- [ ] 4.2 **Green:** implement the smallest Today summary formatter to make the test pass.
-- [ ] 4.3 **Red:** write a failing unit test for Last Night plain-text summary formatting.
-- [ ] 4.4 **Green:** implement the smallest Last Night summary formatter to make the test pass.
-- [ ] 4.5 **Refactor:** unify summary formatting patterns and wording.
+- [x] 4.1 **Red:** write a failing unit test for Today plain-text summary formatting.
+- [x] 4.2 **Green:** implement the smallest Today summary formatter to make the test pass.
+- [x] 4.3 **Red:** write a failing unit test for Last Night plain-text summary formatting.
+- [x] 4.4 **Green:** implement the smallest Last Night summary formatter to make the test pass.
+- [x] 4.5 **Refactor:** unify summary formatting patterns and wording.
 
 ### 4B. CSV export
-- [ ] 4.6 **Red:** write a failing test for CSV rows/headers for the agreed v1 schema: report date/window, app label, package name, foreground duration, battery start percent, battery end percent, battery delta percent, and warning flags.
-- [ ] 4.7 **Green:** implement the smallest CSV exporter to make the test pass.
-- [ ] 4.8 **Refactor:** simplify CSV generation and escaping rules.
+- [x] 4.6 **Red:** write a failing test for CSV rows/headers for the agreed v1 schema: report date/window, app label, package name, foreground duration, battery start percent, battery end percent, battery delta percent, and warning flags.
+- [x] 4.7 **Green:** implement the smallest CSV exporter to make the test pass.
+- [x] 4.8 **Refactor:** simplify CSV generation and escaping rules.
 
 ### 4C. Android sharing
-- [ ] 4.9 **Red:** write a failing instrumentation/integration test for launching text/file sharing.
-- [ ] 4.10 **Green:** implement the smallest `FileProvider`/sharesheet wiring to make the test pass.
-- [ ] 4.11 **Refactor:** tidy export file lifecycle and share intent creation.
+- [x] 4.9 **Red:** write a failing instrumentation/integration test for launching text/file sharing.
+- [x] 4.10 **Green:** implement the smallest `FileProvider`/sharesheet wiring to make the test pass.
+- [x] 4.11 **Refactor:** tidy export file lifecycle and share intent creation.
 
 **Acceptance criteria:**
-- [ ] 4.12 A user can share a compact human-readable summary from the visible report.
-- [ ] 4.13 A user can export a CSV file and send it through Android sharing.
-- [ ] 4.14 Export works offline using only local data.
+- [x] 4.12 A user can share a compact human-readable summary from the visible report.
+- [x] 4.13 A user can export a CSV file and send it through Android sharing.
+- [x] 4.14 Export works offline using only local data.
 
 ## 5. Ticket: Build the minimal mini-app UI
 **Goal:** ship the smallest useful UI with the three agreed screens.

@@ -13,6 +13,8 @@ class UsageAuditActivity : AppCompatActivity() {
     private lateinit var usageAccessChecker: UsageAccessChecker
     private lateinit var settingsNavigator: UsageAccessSettingsNavigator
     private lateinit var dataProvider: UsageAuditDataProvider
+    private var currentTodaySummary: DailyUsageSummary? = null
+    private var currentLastNightAudit: OvernightAudit? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,8 +47,40 @@ class UsageAuditActivity : AppCompatActivity() {
 
     private fun loadAndRender() {
         dataProvider.load(lifecycleScope) { today, lastNight ->
+            currentTodaySummary = today
+            currentLastNightAudit = lastNight
             renderToday(TodayScreenPresenter.present(today))
             renderLastNight(LastNightScreenPresenter.present(lastNight))
+            wireShareActions()
+        }
+    }
+
+    private fun wireShareActions() {
+        val todayActions = findViewById<View>(R.id.today_actions)
+        val lastNightActions = findViewById<View>(R.id.last_night_actions)
+
+        if (currentTodaySummary != null) {
+            todayActions.visibility = View.VISIBLE
+            findViewById<View>(R.id.btn_share_today).setOnClickListener {
+                UsageAuditShare.shareText(this, TodaySummaryFormatter.format(currentTodaySummary))
+            }
+            findViewById<View>(R.id.btn_export_today_csv).setOnClickListener {
+                UsageAuditShare.shareCsv(this, CsvExporter.exportToday(currentTodaySummary), "usage-audit-today.csv")
+            }
+        } else {
+            todayActions.visibility = View.GONE
+        }
+
+        if (currentLastNightAudit != null) {
+            lastNightActions.visibility = View.VISIBLE
+            findViewById<View>(R.id.btn_share_last_night).setOnClickListener {
+                UsageAuditShare.shareText(this, LastNightSummaryFormatter.format(currentLastNightAudit))
+            }
+            findViewById<View>(R.id.btn_export_last_night_csv).setOnClickListener {
+                UsageAuditShare.shareCsv(this, CsvExporter.exportLastNight(currentLastNightAudit), "usage-audit-last-night.csv")
+            }
+        } else {
+            lastNightActions.visibility = View.GONE
         }
     }
 
