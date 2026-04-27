@@ -370,6 +370,36 @@
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp"
                 android:visibility="gone" />
+
+            <!-- History section -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/history_section_title"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/history_empty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/history_empty_state"
+                android:textColor="#888888"
+                android:textSize="14sp"
+                android:textStyle="italic"
+                android:background="@drawable/app_item_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/history_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

@@ -46,11 +46,12 @@ class UsageAuditActivity : AppCompatActivity() {
     }
 
     private fun loadAndRender() {
-        dataProvider.load(lifecycleScope) { today, lastNight ->
-            currentTodaySummary = today
-            currentLastNightAudit = lastNight
-            renderToday(TodayScreenPresenter.present(today))
-            renderLastNight(LastNightScreenPresenter.present(lastNight))
+        dataProvider.load(lifecycleScope) { data ->
+            currentTodaySummary = data.today
+            currentLastNightAudit = data.lastNight
+            renderToday(TodayScreenPresenter.present(data.today))
+            renderLastNight(LastNightScreenPresenter.present(data.lastNight))
+            renderHistory(HistoryScreenPresenter.present(data.recentNights))
             wireShareActions()
         }
     }
@@ -125,6 +126,72 @@ class UsageAuditActivity : AppCompatActivity() {
 
                 renderWarnings(state.warnings)
                 renderAppRows(findViewById(R.id.last_night_apps_list), state.activeApps)
+            }
+        }
+    }
+
+    private fun renderHistory(state: HistoryScreenState) {
+        val empty = findViewById<View>(R.id.history_empty)
+        val list = findViewById<LinearLayout>(R.id.history_list)
+
+        when (state) {
+            is HistoryScreenState.Empty -> {
+                empty.visibility = View.VISIBLE
+                list.visibility = View.GONE
+            }
+            is HistoryScreenState.Populated -> {
+                empty.visibility = View.GONE
+                list.visibility = View.VISIBLE
+                list.removeAllViews()
+                for (entry in state.entries) {
+                    val row = LinearLayout(this).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        setPadding(16, 12, 16, 12)
+                        background = resources.getDrawable(R.drawable.app_item_bg, theme)
+                        val lp = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        )
+                        lp.bottomMargin = 8
+                        layoutParams = lp
+                    }
+                    val date = TextView(this).apply {
+                        text = entry.dateFormatted
+                        setTextColor(0xFFCCCCCC.toInt())
+                        textSize = 14f
+                        layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                    }
+                    val delta = TextView(this).apply {
+                        text = entry.batteryDelta
+                        setTextColor(0xFFFF8A65.toInt())
+                        textSize = 14f
+                    }
+                    val apps = TextView(this).apply {
+                        text = "  ${entry.appCount} apps"
+                        setTextColor(0xFF888888.toInt())
+                        textSize = 13f
+                    }
+                    val warning = if (entry.hasWarnings) {
+                        TextView(this).apply {
+                            text = " ⚠"
+                            setTextColor(0xFFFFB74D.toInt())
+                            textSize = 13f
+                        }
+                    } else null
+
+                    row.addView(date)
+                    row.addView(delta)
+                    row.addView(apps)
+                    warning?.let { row.addView(it) }
+
+                    row.setOnClickListener {
+                        UsageAuditShare.shareText(
+                            this,
+                            LastNightSummaryFormatter.format(entry.audit),
+                        )
+                    }
+                    list.addView(row)
+                }
             }
         }
     }

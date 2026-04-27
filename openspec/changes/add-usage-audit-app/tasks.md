@@ -136,9 +136,9 @@
 - [x] 5.12 **Refactor:** simplify Last Night presentation and labels.
 
 ### 5C. History/Export screen
-- [ ] 5.13 **Red:** write a failing UI test for History/Export actions.
-- [ ] 5.14 **Green:** implement the smallest History/Export screen needed to expose recent locally available overnight reports and export actions.
-- [ ] 5.15 **Refactor:** simplify navigation and action wiring.
+- [x] 5.13 **Red:** write a failing UI test for History/Export actions.
+- [x] 5.14 **Green:** implement the smallest History/Export screen needed to expose recent locally available overnight reports and export actions.
+- [x] 5.15 **Refactor:** simplify navigation and action wiring.
 
 ### 5D. Presentation polish
 - [x] 5.16 **Red:** write a failing UI test for attribution-limit copy visibility where required.

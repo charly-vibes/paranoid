@@ -52,8 +52,14 @@ class AndroidUsageAccessSettingsNavigator(
     }
 }
 
+data class UsageAuditData(
+    val today: DailyUsageSummary?,
+    val lastNight: OvernightAudit?,
+    val recentNights: List<OvernightAudit>,
+)
+
 fun interface UsageAuditDataProvider {
-    fun load(scope: kotlinx.coroutines.CoroutineScope, callback: (today: DailyUsageSummary?, lastNight: OvernightAudit?) -> Unit)
+    fun load(scope: kotlinx.coroutines.CoroutineScope, callback: (UsageAuditData) -> Unit)
 }
 
 object UsageAuditDependencies {

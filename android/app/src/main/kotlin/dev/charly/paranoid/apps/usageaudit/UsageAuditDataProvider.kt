@@ -12,17 +12,14 @@ class AndroidUsageAuditDataProvider(
     private val context: Context,
 ) : UsageAuditDataProvider {
 
-    override fun load(
-        scope: CoroutineScope,
-        callback: (today: DailyUsageSummary?, lastNight: OvernightAudit?) -> Unit,
-    ) {
+    override fun load(scope: CoroutineScope, callback: (UsageAuditData) -> Unit) {
         scope.launch {
             val result = withContext(Dispatchers.IO) { loadData() }
-            callback(result.first, result.second)
+            callback(result)
         }
     }
 
-    private suspend fun loadData(): Pair<DailyUsageSummary?, OvernightAudit?> {
+    private suspend fun loadData(): UsageAuditData {
         val reader = AndroidUsageIntervalReader(context)
         val adapter = UsageQueryAdapter(reader)
         val db = ParanoidDatabase.getInstance(context.applicationContext)
@@ -30,7 +27,8 @@ class AndroidUsageAuditDataProvider(
 
         val todaySummary = loadToday(adapter)
         val lastNightAudit = loadLastNight(adapter, dao)
-        return todaySummary to lastNightAudit
+        val recentNights = loadRecentNights(adapter, dao)
+        return UsageAuditData(todaySummary, lastNightAudit, recentNights)
     }
 
     private fun loadToday(adapter: UsageQueryAdapter): DailyUsageSummary? {
@@ -51,7 +49,28 @@ class AndroidUsageAuditDataProvider(
         adapter: UsageQueryAdapter,
         dao: BatterySnapshotDao,
     ): OvernightAudit? {
+        return loadNightAudit(adapter, dao, daysAgo = 0)
+    }
+
+    private suspend fun loadRecentNights(
+        adapter: UsageQueryAdapter,
+        dao: BatterySnapshotDao,
+    ): List<OvernightAudit> {
+        val audits = mutableListOf<OvernightAudit>()
+        for (daysAgo in 1..6) {
+            val audit = loadNightAudit(adapter, dao, daysAgo) ?: continue
+            audits += audit
+        }
+        return audits
+    }
+
+    private suspend fun loadNightAudit(
+        adapter: UsageQueryAdapter,
+        dao: BatterySnapshotDao,
+        daysAgo: Int,
+    ): OvernightAudit? {
         val cal = Calendar.getInstance()
+        cal.add(Calendar.DAY_OF_YEAR, -daysAgo)
         cal.set(Calendar.HOUR_OF_DAY, 7)
         cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0)
