@@ -2,6 +2,18 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.6.0] — 2026-04-28
+
+### UsageAudit — New Mini-App
+
+- New **UsageAudit** mini-app: minimal daily phone usage and overnight battery audit
+- Usage access gating with system permission prompt
+- Usage and battery data layer (all data stays local)
+- **Today** and **Last Night** screens with activity and battery drain summaries
+- **History** screen with recent nights overview
+- Export to CSV and share sheet integration
+- Integrated into the Paranoid hub launcher
+
 ## [v0.5.0] — 2026-04-23
 
 ### NetDiag — Exchange & Polish
