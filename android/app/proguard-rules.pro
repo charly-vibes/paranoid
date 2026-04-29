@@ -16,3 +16,4 @@
 -keep class dev.charly.paranoid.apps.netmap.model.** { *; }
 -keep class dev.charly.paranoid.apps.netmap.data.** { *; }
 -keep class dev.charly.paranoid.apps.netdiag.data.** { *; }
+-keep class dev.charly.paranoid.apps.usageaudit.** { *; }
