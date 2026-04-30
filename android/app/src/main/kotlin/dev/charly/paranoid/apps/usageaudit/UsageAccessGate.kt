@@ -56,6 +56,7 @@ data class UsageAuditData(
     val today: DailyUsageSummary?,
     val lastNight: OvernightAudit?,
     val recentNights: List<OvernightAudit>,
+    val recentDays: List<DailyUsageSummary> = emptyList(),
 )
 
 fun interface UsageAuditDataProvider {

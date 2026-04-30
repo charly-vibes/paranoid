@@ -1,7 +1,53 @@
 package dev.charly.paranoid.apps.usageaudit
 
+import java.util.Calendar
+import java.util.TimeZone
 import kotlin.math.max
 import kotlin.math.min
+
+data class DayWindow(
+    val startMillis: Long,
+    val endMillis: Long,
+)
+
+object RecentDaysEnumerator {
+    /**
+     * Returns past-day windows (midnight-to-midnight in [timeZone]) chronologically,
+     * oldest first. The current local day is always excluded.
+     *
+     * @param daysBack how many past days to include; 0 yields an empty list.
+     */
+    fun pastDayWindows(
+        nowMillis: Long,
+        daysBack: Int,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): List<DayWindow> {
+        if (daysBack <= 0) return emptyList()
+
+        val cal = Calendar.getInstance(timeZone).apply {
+            timeInMillis = nowMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val todayStart = cal.timeInMillis
+        val windows = ArrayList<DayWindow>(daysBack)
+
+        // Build oldest first.
+        for (offset in daysBack downTo 1) {
+            val dayCal = Calendar.getInstance(timeZone).apply {
+                timeInMillis = todayStart
+                add(Calendar.DAY_OF_YEAR, -offset)
+            }
+            val start = dayCal.timeInMillis
+            dayCal.add(Calendar.DAY_OF_YEAR, 1)
+            val end = dayCal.timeInMillis
+            windows += DayWindow(startMillis = start, endMillis = end)
+        }
+        return windows
+    }
+}
 
 data class AppUsageSlice(
     val packageName: String,

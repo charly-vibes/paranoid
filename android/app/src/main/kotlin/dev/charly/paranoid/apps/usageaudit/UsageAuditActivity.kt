@@ -51,7 +51,7 @@ class UsageAuditActivity : AppCompatActivity() {
             currentLastNightAudit = data.lastNight
             renderToday(TodayScreenPresenter.present(data.today))
             renderLastNight(LastNightScreenPresenter.present(data.lastNight))
-            renderHistory(HistoryScreenPresenter.present(data.recentNights))
+            renderDailyHistory(DailyHistoryPresenter.present(data.recentDays))
             wireShareActions()
         }
     }
@@ -130,16 +130,16 @@ class UsageAuditActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderHistory(state: HistoryScreenState) {
+    private fun renderDailyHistory(state: DailyHistoryScreenState) {
         val empty = findViewById<View>(R.id.history_empty)
         val list = findViewById<LinearLayout>(R.id.history_list)
 
         when (state) {
-            is HistoryScreenState.Empty -> {
+            is DailyHistoryScreenState.Empty -> {
                 empty.visibility = View.VISIBLE
                 list.visibility = View.GONE
             }
-            is HistoryScreenState.Populated -> {
+            is DailyHistoryScreenState.Populated -> {
                 empty.visibility = View.GONE
                 list.visibility = View.VISIBLE
                 list.removeAllViews()
@@ -154,6 +154,8 @@ class UsageAuditActivity : AppCompatActivity() {
                         )
                         lp.bottomMargin = 8
                         layoutParams = lp
+                        isClickable = true
+                        isFocusable = true
                     }
                     val date = TextView(this).apply {
                         text = entry.dateFormatted
@@ -161,33 +163,18 @@ class UsageAuditActivity : AppCompatActivity() {
                         textSize = 14f
                         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     }
-                    val delta = TextView(this).apply {
-                        text = entry.batteryDelta
-                        setTextColor(0xFFFF8A65.toInt())
+                    val total = TextView(this).apply {
+                        text = entry.totalUsageFormatted
+                        setTextColor(0xFFFFB74D.toInt())
                         textSize = 14f
                     }
-                    val apps = TextView(this).apply {
-                        text = "  ${entry.appCount} apps"
-                        setTextColor(0xFF888888.toInt())
-                        textSize = 13f
-                    }
-                    val warning = if (entry.hasWarnings) {
-                        TextView(this).apply {
-                            text = " ⚠"
-                            setTextColor(0xFFFFB74D.toInt())
-                            textSize = 13f
-                        }
-                    } else null
 
                     row.addView(date)
-                    row.addView(delta)
-                    row.addView(apps)
-                    warning?.let { row.addView(it) }
+                    row.addView(total)
 
                     row.setOnClickListener {
-                        UsageAuditShare.shareText(
-                            this,
-                            LastNightSummaryFormatter.format(entry.audit),
+                        startActivity(
+                            UsageAuditDayDetailActivity.newIntent(this, entry.dayStartMillis),
                         )
                     }
                     list.addView(row)

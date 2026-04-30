@@ -28,7 +28,26 @@ class AndroidUsageAuditDataProvider(
         val todaySummary = loadToday(adapter)
         val lastNightAudit = loadLastNight(adapter, dao)
         val recentNights = loadRecentNights(adapter, dao)
-        return UsageAuditData(todaySummary, lastNightAudit, recentNights)
+        val recentDays = loadRecentDays(adapter)
+        return UsageAuditData(todaySummary, lastNightAudit, recentNights, recentDays)
+    }
+
+    private fun loadRecentDays(adapter: UsageQueryAdapter): List<DailyUsageSummary> {
+        val now = System.currentTimeMillis()
+        val windows = RecentDaysEnumerator.pastDayWindows(
+            nowMillis = now,
+            daysBack = RECENT_DAYS_LOOKBACK,
+        )
+        return windows.map { window ->
+            val slices = adapter.queryToday(window.startMillis, window.endMillis)
+            DailyUsageAggregator.summarize(window.startMillis, window.endMillis, slices)
+        }
+    }
+
+    private companion object {
+        // Android's UsageStatsManager typically retains several days of usage data;
+        // we cap at 7 to match the existing overnight-history depth.
+        const val RECENT_DAYS_LOOKBACK = 7
     }
 
     private fun loadToday(adapter: UsageQueryAdapter): DailyUsageSummary? {

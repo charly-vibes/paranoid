@@ -20,8 +20,11 @@
     <string name="last_night_start_label">start</string>
     <string name="last_night_end_label">end</string>
     <string name="last_night_delta_label">change</string>
-    <string name="history_section_title">Recent Nights</string>
-    <string name="history_empty_state">No overnight history available yet.</string>
+    <string name="history_section_title">Recent Days</string>
+    <string name="history_empty_state">No past-day usage data available yet.</string>
+    <string name="day_detail_title">Day Detail</string>
+    <string name="day_detail_zero_usage">No foreground usage was recorded on this day.</string>
+    <string name="day_detail_total_label">total observed activity</string>
     <string name="share_summary">Share Summary</string>
     <string name="export_csv">Export CSV</string>
     <string name="attribution_disclaimer">Battery figures are observations, not exact per-app measurements. Actual per-app drain cannot be determined from these readings.</string>

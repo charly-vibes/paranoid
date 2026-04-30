@@ -1,0 +1,42 @@
+## Suggested implementation order
+1 → 2 → 3 → 4 → 5
+
+## 1. Day-scoped domain queries
+- [x] 1.1 Audit existing day-scoped methods in `UsageAuditDataProvider`/`UsageQueries` and reuse where possible; only extend if a target-day parameter is missing.
+- [ ] 1.2 **Red:** write a failing unit test for daily aggregation over an arbitrary past day (not only "today"), including a DST-affected day.
+- [x] 1.3 **Green:** implement/extend the aggregator so totals reconcile on 23/24/25-hour days. <!-- Slice A: aggregator already accepts arbitrary windows; DST hourly buckets handled in Slice B. -->
+- [ ] 1.4 **Red:** write a failing unit test for an hourly foreground-time distribution that returns the actual hour count for the local day (DST-aware).
+- [ ] 1.5 **Green:** implement the DST-aware hourly bucketing logic.
+- [ ] 1.6 **Red:** write a failing unit test for a `UsageStatsManager.queryEvents`-based adapter producing per-app foreground intervals (start/end) for a given day.
+- [ ] 1.7 **Green:** implement the events-based per-app interval extractor.
+- [ ] 1.8 **Red:** write a failing unit test for resolving an uninstalled package (no resolvable label) and surfacing an explicit "uninstalled" marker.
+- [ ] 1.9 **Green:** implement the package-resolution fallback.
+- [ ] 1.10 **Refactor:** tidy shared day-window helpers and naming.
+
+## 2. History list
+- [x] 2.1 **Red:** write a failing test enumerating recent past days with totals from the platform-retained usage window; the current day MUST be excluded.
+- [x] 2.2 **Green:** implement the recent-days enumerator.
+- [x] 2.3 **Red:** write a failing UI test for the History screen list, the today-excluded behavior, and the empty state. <!-- Slice A: presenter-level test, matching existing TodayScreenPresenterTest pattern. -->
+- [x] 2.4 **Green:** implement the History screen list and empty state.
+
+## 3. Day Detail screen
+- [ ] 3.1 **Red:** write a failing UI test for Day Detail showing total, full ranked apps, hourly bars, and the overnight summary whose window *starts within* the selected day (when available). <!-- Slice A covers total + ranked apps only; hourly + overnight added in Slice B. -->
+- [ ] 3.2 **Green:** implement the Day Detail screen. <!-- Slice A: total + ranked apps implemented; hourly + overnight pending Slice B. -->
+- [x] 3.3 **Red:** write a failing UI test for a zero-usage day (empty hourly bars, no app rows, zero total). <!-- Slice A: zero total + no app rows. Empty hourly bars covered in Slice B. -->
+- [x] 3.4 **Green:** implement the zero-usage state.
+- [ ] 3.5 **Red:** write a failing test that Share/CSV export from Day Detail is scoped to the selected day and uses the existing v1 schema (no hourly or interval columns).
+- [ ] 3.6 **Green:** wire the existing exporters to the selected day without extending the schema.
+- [ ] 3.7 **Refactor:** unify Today and Day Detail rendering paths.
+
+## 4. App Detail drill-down
+- [ ] 4.1 **Red:** write a failing UI test for App Detail showing total and observed intervals on a chosen day.
+- [ ] 4.2 **Green:** implement the App Detail screen.
+- [ ] 4.3 **Red:** write a failing UI test for the no-activity state.
+- [ ] 4.4 **Green:** implement the no-activity state.
+- [ ] 4.5 **Red:** write a failing UI test for the uninstalled-package state (raw package name + "uninstalled" indicator, intervals still shown).
+- [ ] 4.6 **Green:** implement the uninstalled-package presentation.
+
+## 5. Navigation and integration
+- [ ] 5.1 Add navigation entries: Today/History → Day Detail → App Detail; ensure Back works on all paths.
+- [ ] 5.2 Update `usageaudit/spec/functionality.md` Screens table with new rows: `Day Detail` ("Per-day breakdown: ranked apps, hourly distribution, overnight summary") and `App Detail` ("Per-app foreground intervals for a selected day"), and amend the existing `History` row to reflect daily browsing.
+- [ ] 5.3 Run `just test` and confirm green.

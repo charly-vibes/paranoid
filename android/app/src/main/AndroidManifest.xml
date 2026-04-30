@@ -74,6 +74,10 @@
             android:name=".apps.usageaudit.UsageAuditActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".apps.usageaudit.UsageAuditDayDetailActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".apps.usageaudit.UsageAuditPowerEventReceiver"
             android:exported="false">

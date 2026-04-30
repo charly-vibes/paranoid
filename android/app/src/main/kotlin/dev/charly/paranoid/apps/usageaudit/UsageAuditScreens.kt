@@ -1,9 +1,85 @@
 package dev.charly.paranoid.apps.usageaudit
 
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+
 data class AppRow(
     val label: String,
     val durationFormatted: String,
 )
+
+data class DailyHistoryEntry(
+    val dayStartMillis: Long,
+    val dateFormatted: String,
+    val totalUsageFormatted: String,
+)
+
+sealed interface DailyHistoryScreenState {
+    data object Empty : DailyHistoryScreenState
+    data class Populated(val entries: List<DailyHistoryEntry>) : DailyHistoryScreenState
+}
+
+data class DayDetailScreenState(
+    val dayStartMillis: Long,
+    val dateFormatted: String,
+    val totalUsageFormatted: String,
+    val apps: List<AppRow>,
+    val showZeroUsageMessage: Boolean,
+)
+
+object DailyHistoryPresenter {
+    fun present(
+        days: List<DailyUsageSummary>,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): DailyHistoryScreenState {
+        if (days.isEmpty()) return DailyHistoryScreenState.Empty
+        val fmt = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        return DailyHistoryScreenState.Populated(
+            entries = days.map { day ->
+                DailyHistoryEntry(
+                    dayStartMillis = day.windowStartMillis,
+                    dateFormatted = fmt.format(Date(day.windowStartMillis)),
+                    totalUsageFormatted = formatDayDuration(day.totalForegroundDurationMillis),
+                )
+            },
+        )
+    }
+}
+
+object DayDetailPresenter {
+    fun present(
+        summary: DailyUsageSummary,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): DayDetailScreenState {
+        val fmt = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        val isZero = summary.totalForegroundDurationMillis == 0L
+        return DayDetailScreenState(
+            dayStartMillis = summary.windowStartMillis,
+            dateFormatted = fmt.format(Date(summary.windowStartMillis)),
+            totalUsageFormatted = formatDayDuration(summary.totalForegroundDurationMillis),
+            apps = summary.appsByForegroundDuration.map { app ->
+                AppRow(
+                    label = app.appLabel,
+                    durationFormatted = formatDuration(app.foregroundDurationMillis),
+                )
+            },
+            showZeroUsageMessage = isZero,
+        )
+    }
+}
+
+/**
+ * Like [formatDuration], but renders an exact zero as "0m" rather than "<1m".
+ * Used for day-scoped totals where zero is a meaningful state ("no recorded usage").
+ */
+internal fun formatDayDuration(millis: Long): String =
+    if (millis == 0L) "0m" else formatDuration(millis)
 
 sealed interface TodayScreenState {
     data object Empty : TodayScreenState
