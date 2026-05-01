@@ -2,6 +2,8 @@ package dev.charly.paranoid.apps.usageaudit
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Calendar
@@ -10,6 +12,8 @@ import java.util.TimeZone
 class DayDetailPresenterTest {
 
     private val utc = TimeZone.getTimeZone("UTC")
+    private val MS_MINUTE = 60L * 1_000L
+    private val MS_HOUR = 60L * MS_MINUTE
 
     private fun dayStart(year: Int, month: Int, day: Int): Long {
         val cal = Calendar.getInstance(utc)
@@ -40,6 +44,135 @@ class DayDetailPresenterTest {
         assertEquals("Reader", state.apps[1].label)
         assertEquals("30m", state.apps[1].durationFormatted)
         assertFalse(state.showZeroUsageMessage)
+    }
+
+    @Test
+    fun `hourly bars render one entry per real hour on a normal day and total reconciles`() {
+        val start = dayStart(2026, Calendar.APRIL, 25)
+        val end = start + 86_400_000L
+        val slice = AppUsageSlice(
+            packageName = "com.example.chat",
+            appLabel = "Chat",
+            windowStartMillis = start + 9 * MS_HOUR + 30 * MS_MINUTE,
+            windowEndMillis = start + 10 * MS_HOUR + 30 * MS_MINUTE,
+            foregroundDurationMillis = MS_HOUR,
+        )
+        val summary = DailyUsageAggregator.summarize(start, end, listOf(slice))
+        val buckets = DailyUsageAggregator.hourlyDistribution(start, end, listOf(slice))
+
+        val state = DayDetailPresenter.present(summary, hourlyBuckets = buckets, timeZone = utc)
+
+        assertEquals(24, state.hourlyBars.size)
+        assertEquals(
+            summary.totalForegroundDurationMillis,
+            state.hourlyBars.sumOf { it.foregroundDurationMillis },
+        )
+    }
+
+    @Test
+    fun `hourly bars render one entry per real hour on a spring-forward day`() {
+        val pacific = TimeZone.getTimeZone("America/Los_Angeles")
+        // Sunday March 8, 2026 in Pacific is a 23-hour spring-forward day.
+        val cal = Calendar.getInstance(pacific).apply {
+            clear()
+            set(2026, Calendar.MARCH, 8, 0, 0, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val start = cal.timeInMillis
+        cal.add(Calendar.DAY_OF_YEAR, 1)
+        val end = cal.timeInMillis
+        val slice = AppUsageSlice(
+            packageName = "com.example.chat",
+            appLabel = "Chat",
+            windowStartMillis = start + 1 * MS_HOUR,
+            windowEndMillis = start + 3 * MS_HOUR,
+            foregroundDurationMillis = 2 * MS_HOUR,
+        )
+        val summary = DailyUsageAggregator.summarize(start, end, listOf(slice))
+        val buckets = DailyUsageAggregator.hourlyDistribution(start, end, listOf(slice))
+
+        val state = DayDetailPresenter.present(summary, hourlyBuckets = buckets, timeZone = pacific)
+
+        assertEquals(23, state.hourlyBars.size)
+        assertEquals(
+            summary.totalForegroundDurationMillis,
+            state.hourlyBars.sumOf { it.foregroundDurationMillis },
+        )
+    }
+
+    @Test
+    fun `overnight summary appears when its window starts within the selected day`() {
+        val start = dayStart(2026, Calendar.APRIL, 25)
+        val end = start + 86_400_000L
+        val summary = DailyUsageSummary(
+            windowStartMillis = start,
+            windowEndMillis = end,
+            totalForegroundDurationMillis = 0L,
+            appsByForegroundDuration = emptyList(),
+        )
+        // Overnight window starts at 23:00 of the selected day.
+        val overnightStart = start + 23 * MS_HOUR
+        val overnightEnd = overnightStart + 8 * MS_HOUR
+        val overnight = OvernightAudit(
+            windowStartMillis = overnightStart,
+            windowEndMillis = overnightEnd,
+            batteryStartPercent = 80,
+            batteryEndPercent = 62,
+            batteryDeltaPercent = -18,
+            totalForegroundDurationMillis = 0L,
+            activeApps = emptyList(),
+            activeAppsCount = 0,
+            hadChargingTransition = false,
+            hasIncompleteBatteryCoverage = false,
+            warningFlags = emptySet(),
+        )
+
+        val state = DayDetailPresenter.present(
+            summary = summary,
+            hourlyBuckets = emptyList(),
+            overnight = overnight,
+            timeZone = utc,
+        )
+
+        val row = state.overnightSummary
+        assertNotNull("expected overnight summary to be present", row)
+        assertEquals("−18%", row!!.batteryDelta)
+    }
+
+    @Test
+    fun `overnight summary is omitted when its window starts on a different day`() {
+        val start = dayStart(2026, Calendar.APRIL, 25)
+        val end = start + 86_400_000L
+        val summary = DailyUsageSummary(
+            windowStartMillis = start,
+            windowEndMillis = end,
+            totalForegroundDurationMillis = 0L,
+            appsByForegroundDuration = emptyList(),
+        )
+        // Overnight window starts on the next day.
+        val overnightStart = end + MS_HOUR
+        val overnight = OvernightAudit(
+            windowStartMillis = overnightStart,
+            windowEndMillis = overnightStart + 8 * MS_HOUR,
+            batteryStartPercent = 90,
+            batteryEndPercent = 80,
+            batteryDeltaPercent = -10,
+            totalForegroundDurationMillis = 0L,
+            activeApps = emptyList(),
+            activeAppsCount = 0,
+            hadChargingTransition = false,
+            hasIncompleteBatteryCoverage = false,
+            warningFlags = emptySet(),
+        )
+
+        val state = DayDetailPresenter.present(
+            summary = summary,
+            hourlyBuckets = emptyList(),
+            overnight = overnight,
+            timeZone = utc,
+        )
+
+        assertNull(state.overnightSummary)
     }
 
     @Test

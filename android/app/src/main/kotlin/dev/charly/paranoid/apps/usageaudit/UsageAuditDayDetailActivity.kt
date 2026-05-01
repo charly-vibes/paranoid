@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -11,13 +13,15 @@ import androidx.lifecycle.lifecycleScope
 import dev.charly.paranoid.R
 
 /**
- * Day Detail screen — shows total foreground time and the ranked app list for a
- * specific past day. Slice A scope: total + ranked apps + zero-usage state.
- * Hourly distribution and overnight summary will be added in Slice B.
+ * Day Detail screen — shows total foreground time, hourly distribution, the
+ * ranked app list, and (when available) the overnight summary attached to the
+ * selected day. Slice B adds the hourly bars, the overnight panel, and
+ * day-scoped Share/CSV.
  */
 class UsageAuditDayDetailActivity : AppCompatActivity() {
 
     private lateinit var dataProvider: UsageAuditDataProvider
+    private var currentSummary: DailyUsageSummary? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +37,21 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
             return
         }
 
+        findViewById<Button>(R.id.day_detail_share_summary).setOnClickListener {
+            currentSummary?.let { summary ->
+                UsageAuditShare.shareText(this, TodaySummaryFormatter.format(summary))
+            }
+        }
+        findViewById<Button>(R.id.day_detail_export_csv).setOnClickListener {
+            currentSummary?.let { summary ->
+                UsageAuditShare.shareCsv(
+                    context = this,
+                    csv = CsvExporter.exportToday(summary),
+                    filename = "usage-audit-day-${summary.windowStartMillis}.csv",
+                )
+            }
+        }
+
         loadAndRender(targetDayStart)
     }
 
@@ -40,7 +59,18 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
         dataProvider.load(lifecycleScope) { data ->
             val summary = data.recentDays.firstOrNull { it.windowStartMillis == targetDayStart }
                 ?: zeroUsagePlaceholder(targetDayStart)
-            render(DayDetailPresenter.present(summary))
+            currentSummary = summary
+            val hourlyBuckets = data.recentDayHourlyBuckets[targetDayStart].orEmpty()
+            val overnight = data.recentNights.firstOrNull {
+                it.windowStartMillis in summary.windowStartMillis until summary.windowEndMillis
+            }
+            render(
+                DayDetailPresenter.present(
+                    summary = summary,
+                    hourlyBuckets = hourlyBuckets,
+                    overnight = overnight,
+                ),
+            )
         }
     }
 
@@ -60,6 +90,9 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
 
         val zeroUsage = findViewById<View>(R.id.day_detail_zero_usage)
         zeroUsage.visibility = if (state.showZeroUsageMessage) View.VISIBLE else View.GONE
+
+        renderHourlyBars(state.hourlyBars)
+        renderOvernight(state.overnightSummary)
 
         val list = findViewById<LinearLayout>(R.id.day_detail_apps_list)
         list.removeAllViews()
@@ -87,6 +120,57 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
             row.addView(duration)
             list.addView(row)
         }
+    }
+
+    private fun renderHourlyBars(bars: List<HourlyBar>) {
+        val container = findViewById<LinearLayout>(R.id.day_detail_hourly_bars)
+        container.removeAllViews()
+        if (bars.isEmpty()) {
+            container.visibility = View.GONE
+            findViewById<View>(R.id.day_detail_hourly_heading).visibility = View.GONE
+            return
+        }
+        container.visibility = View.VISIBLE
+        findViewById<View>(R.id.day_detail_hourly_heading).visibility = View.VISIBLE
+        for (bar in bars) {
+            val column = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.BOTTOM
+                layoutParams = LinearLayout.LayoutParams(
+                    0,
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    1f,
+                ).apply {
+                    marginStart = 1
+                    marginEnd = 1
+                }
+            }
+            val rect = View(this).apply {
+                setBackgroundColor(0xFFFFB74D.toInt())
+                val heightDp = (4 + 56 * bar.intensity).coerceAtLeast(2f)
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    (heightDp * resources.displayMetrics.density).toInt(),
+                )
+            }
+            column.addView(rect)
+            container.addView(column)
+        }
+    }
+
+    private fun renderOvernight(row: OvernightSummaryRow?) {
+        val panel = findViewById<LinearLayout>(R.id.day_detail_overnight_panel)
+        if (row == null) {
+            panel.visibility = View.GONE
+            return
+        }
+        panel.visibility = View.VISIBLE
+        findViewById<TextView>(R.id.day_detail_overnight_window).text = row.windowFormatted
+        findViewById<TextView>(R.id.day_detail_overnight_battery).text =
+            "Battery delta: ${row.batteryDelta}"
+        val warningSuffix = if (row.warningCount > 0) " · ${row.warningCount} warning(s)" else ""
+        findViewById<TextView>(R.id.day_detail_overnight_apps).text =
+            "${row.activeAppsCount} active app(s)$warningSuffix"
     }
 
     companion object {

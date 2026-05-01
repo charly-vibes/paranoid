@@ -28,20 +28,36 @@ class AndroidUsageAuditDataProvider(
         val todaySummary = loadToday(adapter)
         val lastNightAudit = loadLastNight(adapter, dao)
         val recentNights = loadRecentNights(adapter, dao)
-        val recentDays = loadRecentDays(adapter)
-        return UsageAuditData(todaySummary, lastNightAudit, recentNights, recentDays)
+        val (recentDays, recentDayHourlyBuckets) = loadRecentDays(adapter)
+        return UsageAuditData(
+            today = todaySummary,
+            lastNight = lastNightAudit,
+            recentNights = recentNights,
+            recentDays = recentDays,
+            recentDayHourlyBuckets = recentDayHourlyBuckets,
+        )
     }
 
-    private fun loadRecentDays(adapter: UsageQueryAdapter): List<DailyUsageSummary> {
+    private fun loadRecentDays(
+        adapter: UsageQueryAdapter,
+    ): Pair<List<DailyUsageSummary>, Map<Long, List<HourlyBucket>>> {
         val now = System.currentTimeMillis()
         val windows = RecentDaysEnumerator.pastDayWindows(
             nowMillis = now,
             daysBack = RECENT_DAYS_LOOKBACK,
         )
-        return windows.map { window ->
+        val summaries = ArrayList<DailyUsageSummary>(windows.size)
+        val buckets = HashMap<Long, List<HourlyBucket>>(windows.size)
+        for (window in windows) {
             val slices = adapter.queryToday(window.startMillis, window.endMillis)
-            DailyUsageAggregator.summarize(window.startMillis, window.endMillis, slices)
+            summaries += DailyUsageAggregator.summarize(window.startMillis, window.endMillis, slices)
+            buckets[window.startMillis] = DailyUsageAggregator.hourlyDistribution(
+                window.startMillis,
+                window.endMillis,
+                slices,
+            )
         }
+        return summaries to buckets
     }
 
     private companion object {

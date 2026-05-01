@@ -21,11 +21,28 @@ sealed interface DailyHistoryScreenState {
     data class Populated(val entries: List<DailyHistoryEntry>) : DailyHistoryScreenState
 }
 
+data class HourlyBar(
+    val hourLabel: String,
+    val foregroundDurationMillis: Long,
+    val durationFormatted: String,
+    /** Fill ratio, 0f..1f, relative to the busiest bucket of the day. */
+    val intensity: Float,
+)
+
+data class OvernightSummaryRow(
+    val windowFormatted: String,
+    val batteryDelta: String,
+    val activeAppsCount: Int,
+    val warningCount: Int,
+)
+
 data class DayDetailScreenState(
     val dayStartMillis: Long,
     val dateFormatted: String,
     val totalUsageFormatted: String,
     val apps: List<AppRow>,
+    val hourlyBars: List<HourlyBar>,
+    val overnightSummary: OvernightSummaryRow?,
     val showZeroUsageMessage: Boolean,
 )
 
@@ -53,15 +70,42 @@ object DailyHistoryPresenter {
 object DayDetailPresenter {
     fun present(
         summary: DailyUsageSummary,
+        hourlyBuckets: List<HourlyBucket> = emptyList(),
+        overnight: OvernightAudit? = null,
         timeZone: TimeZone = TimeZone.getDefault(),
     ): DayDetailScreenState {
-        val fmt = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).apply {
+        val dateFmt = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        val hourFmt = SimpleDateFormat("HH", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
             this.timeZone = timeZone
         }
         val isZero = summary.totalForegroundDurationMillis == 0L
+        val maxBucketMillis = hourlyBuckets.maxOfOrNull { it.foregroundDurationMillis } ?: 0L
+        val bars = hourlyBuckets.map { bucket ->
+            HourlyBar(
+                hourLabel = hourFmt.format(Date(bucket.hourStartMillis)),
+                foregroundDurationMillis = bucket.foregroundDurationMillis,
+                durationFormatted = formatDayDuration(bucket.foregroundDurationMillis),
+                intensity = if (maxBucketMillis <= 0L) 0f else bucket.foregroundDurationMillis.toFloat() / maxBucketMillis.toFloat(),
+            )
+        }
+        val overnightRow = overnight
+            ?.takeIf { it.windowStartMillis in summary.windowStartMillis until summary.windowEndMillis }
+            ?.let { audit ->
+                OvernightSummaryRow(
+                    windowFormatted = "${timeFmt.format(Date(audit.windowStartMillis))}–${timeFmt.format(Date(audit.windowEndMillis))}",
+                    batteryDelta = audit.batteryDeltaPercent?.let(::formatBatteryDelta) ?: "—",
+                    activeAppsCount = audit.activeAppsCount,
+                    warningCount = audit.warningFlags.size,
+                )
+            }
         return DayDetailScreenState(
             dayStartMillis = summary.windowStartMillis,
-            dateFormatted = fmt.format(Date(summary.windowStartMillis)),
+            dateFormatted = dateFmt.format(Date(summary.windowStartMillis)),
             totalUsageFormatted = formatDayDuration(summary.totalForegroundDurationMillis),
             apps = summary.appsByForegroundDuration.map { app ->
                 AppRow(
@@ -69,9 +113,17 @@ object DayDetailPresenter {
                     durationFormatted = formatDuration(app.foregroundDurationMillis),
                 )
             },
+            hourlyBars = bars,
+            overnightSummary = overnightRow,
             showZeroUsageMessage = isZero,
         )
     }
+}
+
+private fun formatBatteryDelta(delta: Int): String = when {
+    delta < 0 -> "−${-delta}%"
+    delta > 0 -> "+$delta%"
+    else -> "0%"
 }
 
 /**

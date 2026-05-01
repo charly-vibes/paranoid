@@ -71,6 +71,19 @@ data class DailyUsageSummary(
     val appsByForegroundDuration: List<AppUsageSummary>,
 )
 
+/**
+ * Foreground time inside a single wall-clock hour bucket of a local day window.
+ *
+ * [hourEndMillis] is exclusive. On daylight-saving boundaries the bucket count
+ * for a local day reflects real elapsed hours: 23 on a spring-forward day, 24
+ * normally, 25 on a fall-back day.
+ */
+data class HourlyBucket(
+    val hourStartMillis: Long,
+    val hourEndMillis: Long,
+    val foregroundDurationMillis: Long,
+)
+
 enum class ChargingState {
     CHARGING,
     DISCHARGING,
@@ -120,6 +133,38 @@ object DailyUsageAggregator {
             appsByForegroundDuration = appsByForegroundDuration,
         )
     }
+
+    /**
+     * Splits [windowStartMillis, windowEndMillis) into one-hour real-time buckets
+     * and assigns each slice's overlap to the bucket(s) it falls in.
+     *
+     * Window length is preserved exactly: on a 23-hour spring-forward local day
+     * the result has 23 buckets, on a 25-hour fall-back day 25 buckets, and 24
+     * otherwise. Callers are expected to pass DST-aware day windows
+     * (e.g. produced by [RecentDaysEnumerator]).
+     */
+    fun hourlyDistribution(
+        windowStartMillis: Long,
+        windowEndMillis: Long,
+        slices: List<AppUsageSlice>,
+    ): List<HourlyBucket> {
+        if (windowEndMillis <= windowStartMillis) return emptyList()
+        val buckets = ArrayList<HourlyBucket>(((windowEndMillis - windowStartMillis) / MILLIS_PER_HOUR + 1).toInt())
+        var hourStart = windowStartMillis
+        while (hourStart < windowEndMillis) {
+            val hourEnd = (hourStart + MILLIS_PER_HOUR).coerceAtMost(windowEndMillis)
+            val duration = slices.sumOf { it.overlapDuration(hourStart, hourEnd) }
+            buckets += HourlyBucket(
+                hourStartMillis = hourStart,
+                hourEndMillis = hourEnd,
+                foregroundDurationMillis = duration,
+            )
+            hourStart = hourEnd
+        }
+        return buckets
+    }
+
+    private const val MILLIS_PER_HOUR: Long = 60L * 60L * 1_000L
 
     internal fun summarizeApps(
         windowStartMillis: Long,

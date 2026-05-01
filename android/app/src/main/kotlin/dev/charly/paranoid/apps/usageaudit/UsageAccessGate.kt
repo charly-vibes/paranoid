@@ -57,6 +57,8 @@ data class UsageAuditData(
     val lastNight: OvernightAudit?,
     val recentNights: List<OvernightAudit>,
     val recentDays: List<DailyUsageSummary> = emptyList(),
+    /** Hourly foreground-time buckets per recent day, keyed by [DailyUsageSummary.windowStartMillis]. */
+    val recentDayHourlyBuckets: Map<Long, List<HourlyBucket>> = emptyMap(),
 )
 
 fun interface UsageAuditDataProvider {

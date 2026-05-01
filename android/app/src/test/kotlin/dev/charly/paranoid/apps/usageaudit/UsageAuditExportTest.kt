@@ -191,4 +191,57 @@ class CsvExporterTest {
         assertEquals(1, lines.size)
         assertTrue(lines[0].startsWith("report_date"))
     }
+
+    @Test
+    fun `day-detail share text is scoped to the selected day's summary`() {
+        // Slice B: Share Summary on Day Detail must reuse the existing
+        // TodaySummaryFormatter on the *selected* day's summary, with no extra
+        // hourly or interval data appended.
+        val pastDayStart = 1_713_700_000_000L
+        val summary = DailyUsageSummary(
+            windowStartMillis = pastDayStart,
+            windowEndMillis = pastDayStart + 86_400_000L,
+            totalForegroundDurationMillis = 7_200_000L,
+            appsByForegroundDuration = listOf(
+                AppUsageSummary("com.example.reader", "Reader", 7_200_000L),
+            ),
+        )
+
+        val text = TodaySummaryFormatter.format(summary)
+
+        assertTrue("expected per-day total in share text", text.contains("2h 0m"))
+        assertTrue("expected app label in share text", text.contains("Reader"))
+        // Schema guard: no hourly distribution leaks into the plain-text share.
+        assertTrue("share text must not include hourly markers", !text.contains("hour"))
+        assertTrue("share text must not include interval markers", !text.contains("interval"))
+    }
+
+    @Test
+    fun `day-detail CSV uses the existing v1 schema with no hourly or interval columns`() {
+        // Slice B explicitly preserves the v1 schema (10 columns) when sharing
+        // a past day. New hourly/interval data is *not* part of the export.
+        val pastDayStart = 1_713_700_000_000L
+        val summary = DailyUsageSummary(
+            windowStartMillis = pastDayStart,
+            windowEndMillis = pastDayStart + 86_400_000L,
+            totalForegroundDurationMillis = 3_600_000L,
+            appsByForegroundDuration = listOf(
+                AppUsageSummary("com.example.reader", "Reader", 3_600_000L),
+            ),
+        )
+
+        val csv = CsvExporter.exportToday(summary)
+        val lines = csv.lines().filter { it.isNotBlank() }
+        val header = lines[0]
+        val v1Header = "report_date,window_start,window_end,app_label,package_name," +
+            "foreground_duration_millis,battery_start_percent,battery_end_percent," +
+            "battery_delta_percent,warning_flags"
+
+        assertEquals(v1Header, header)
+        // No hourly bucket or interval columns.
+        assertTrue(!header.contains("hour"))
+        assertTrue(!header.contains("interval"))
+        // Day-scoped: window_start in the data row matches the selected day.
+        assertTrue("expected window_start to scope to selected day", lines[1].contains(pastDayStart.toString()))
+    }
 }

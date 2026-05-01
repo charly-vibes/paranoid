@@ -5,8 +5,8 @@
 - [x] 1.1 Audit existing day-scoped methods in `UsageAuditDataProvider`/`UsageQueries` and reuse where possible; only extend if a target-day parameter is missing.
 - [ ] 1.2 **Red:** write a failing unit test for daily aggregation over an arbitrary past day (not only "today"), including a DST-affected day.
 - [x] 1.3 **Green:** implement/extend the aggregator so totals reconcile on 23/24/25-hour days. <!-- Slice A: aggregator already accepts arbitrary windows; DST hourly buckets handled in Slice B. -->
-- [ ] 1.4 **Red:** write a failing unit test for an hourly foreground-time distribution that returns the actual hour count for the local day (DST-aware).
-- [ ] 1.5 **Green:** implement the DST-aware hourly bucketing logic.
+- [x] 1.4 **Red:** write a failing unit test for an hourly foreground-time distribution that returns the actual hour count for the local day (DST-aware).
+- [x] 1.5 **Green:** implement the DST-aware hourly bucketing logic.
 - [ ] 1.6 **Red:** write a failing unit test for a `UsageStatsManager.queryEvents`-based adapter producing per-app foreground intervals (start/end) for a given day.
 - [ ] 1.7 **Green:** implement the events-based per-app interval extractor.
 - [ ] 1.8 **Red:** write a failing unit test for resolving an uninstalled package (no resolvable label) and surfacing an explicit "uninstalled" marker.
@@ -20,12 +20,12 @@
 - [x] 2.4 **Green:** implement the History screen list and empty state.
 
 ## 3. Day Detail screen
-- [ ] 3.1 **Red:** write a failing UI test for Day Detail showing total, full ranked apps, hourly bars, and the overnight summary whose window *starts within* the selected day (when available). <!-- Slice A covers total + ranked apps only; hourly + overnight added in Slice B. -->
-- [ ] 3.2 **Green:** implement the Day Detail screen. <!-- Slice A: total + ranked apps implemented; hourly + overnight pending Slice B. -->
+- [x] 3.1 **Red:** write a failing UI test for Day Detail showing total, full ranked apps, hourly bars, and the overnight summary whose window *starts within* the selected day (when available). <!-- Slice B: presenter-level tests in DayDetailPresenterTest cover hourly bars (normal + DST) + overnight in/out-of-day. -->
+- [x] 3.2 **Green:** implement the Day Detail screen.
 - [x] 3.3 **Red:** write a failing UI test for a zero-usage day (empty hourly bars, no app rows, zero total). <!-- Slice A: zero total + no app rows. Empty hourly bars covered in Slice B. -->
 - [x] 3.4 **Green:** implement the zero-usage state.
-- [ ] 3.5 **Red:** write a failing test that Share/CSV export from Day Detail is scoped to the selected day and uses the existing v1 schema (no hourly or interval columns).
-- [ ] 3.6 **Green:** wire the existing exporters to the selected day without extending the schema.
+- [x] 3.5 **Red:** write a failing test that Share/CSV export from Day Detail is scoped to the selected day and uses the existing v1 schema (no hourly or interval columns).
+- [x] 3.6 **Green:** wire the existing exporters to the selected day without extending the schema.
 - [ ] 3.7 **Refactor:** unify Today and Day Detail rendering paths.
 
 ## 4. App Detail drill-down

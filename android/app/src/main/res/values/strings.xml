@@ -25,6 +25,8 @@
     <string name="day_detail_title">Day Detail</string>
     <string name="day_detail_zero_usage">No foreground usage was recorded on this day.</string>
     <string name="day_detail_total_label">total observed activity</string>
+    <string name="day_detail_hourly_heading">Hourly distribution</string>
+    <string name="day_detail_overnight_heading">Last night summary</string>
     <string name="share_summary">Share Summary</string>
     <string name="export_csv">Export CSV</string>
     <string name="attribution_disclaimer">Battery figures are observations, not exact per-app measurements. Actual per-app drain cannot be determined from these readings.</string>
