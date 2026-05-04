@@ -30,7 +30,9 @@ Required at runtime:
 |---|---|
 | Today | Daily usage summary with ranked app list |
 | Last Night | Overnight battery audit with activity breakdown |
-| History | Recent nights with battery drop summaries |
+| History | Recent past days with totals, plus recent overnight battery reports |
+| Day Detail | Per-day breakdown: total, ranked apps, hourly distribution, overnight summary |
+| App Detail | Per-app foreground intervals for a selected day |
 
 ## Overnight Window
 

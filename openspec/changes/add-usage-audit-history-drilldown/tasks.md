@@ -39,5 +39,13 @@
 ## 5. Navigation and integration
 - [x] 5.1 Add navigation entries: Today/History → Day Detail → App Detail; ensure Back works on all paths. <!-- Slice C: Day Detail row click → App Detail; Back via finish() on btn_back. -->
 <!-- 5.2 (functionality.md update) and 5.3 (verification + manual device check) deferred to Slice D (PARANOID-p5i.9). -->
-- [ ] 5.2 Update `usageaudit/spec/functionality.md` Screens table with new rows: `Day Detail` ("Per-day breakdown: ranked apps, hourly distribution, overnight summary") and `App Detail` ("Per-app foreground intervals for a selected day"), and amend the existing `History` row to reflect daily browsing.
-- [ ] 5.3 Run `just test` and confirm green.
+- [x] 5.2 Update `usageaudit/spec/functionality.md` Screens table with new rows: `Day Detail` ("Per-day breakdown: ranked apps, hourly distribution, overnight summary") and `App Detail` ("Per-app foreground intervals for a selected day"), and amend the existing `History` row to reflect daily browsing. <!-- Slice D (PARANOID-p5i.9): functionality.md updated with Day Detail + App Detail rows and History description amended. -->
+- [x] 5.3 Run `just test` and confirm green. <!-- Slice D (PARANOID-p5i.9): just test passed (BUILD SUCCESSFUL, all tasks UP-TO-DATE). -->
+
+## Slice D — manual device verification (HITL)
+The following acceptance items in PARANOID-p5i.9 require a physical device and are deferred to the human:
+- D.3 History → past day → totals reconcile with notification-shade usage stats (within tolerance).
+- D.4 Hourly distribution looks plausible and reconciles with the rendered total.
+- D.5 App Detail intervals on a known-active app.
+- D.6 Uninstalled-package state by uninstalling a recently-used app and drilling into it.
+- D.7 Share / CSV from Day Detail produce per-day output (no hourly or interval columns).
