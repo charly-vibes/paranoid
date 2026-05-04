@@ -8,6 +8,8 @@ import java.util.TimeZone
 data class AppRow(
     val label: String,
     val durationFormatted: String,
+    /** Source package name; null for callers that don't carry it (e.g. legacy formatters). */
+    val packageName: String? = null,
 )
 
 data class DailyHistoryEntry(
@@ -111,11 +113,62 @@ object DayDetailPresenter {
                 AppRow(
                     label = app.appLabel,
                     durationFormatted = formatDuration(app.foregroundDurationMillis),
+                    packageName = app.packageName,
                 )
             },
             hourlyBars = bars,
             overnightSummary = overnightRow,
             showZeroUsageMessage = isZero,
+        )
+    }
+}
+
+data class IntervalRow(
+    val startFormatted: String,
+    val endFormatted: String,
+    val durationFormatted: String,
+)
+
+data class AppDetailScreenState(
+    val packageName: String,
+    val displayLabel: String,
+    val isUninstalled: Boolean,
+    val dateFormatted: String,
+    val totalUsageFormatted: String,
+    val intervals: List<IntervalRow>,
+    val showNoActivityMessage: Boolean,
+)
+
+object AppDetailPresenter {
+    fun present(
+        detail: AppDayDetail,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): AppDetailScreenState {
+        val dateFmt = SimpleDateFormat("EEE, MMM d", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault()).apply {
+            this.timeZone = timeZone
+        }
+        val (label, isUninstalled) = when (val l = detail.appLabel) {
+            is AppLabel.Installed -> l.label to false
+            AppLabel.Uninstalled -> detail.packageName to true
+        }
+        val intervalRows = detail.intervals.map { interval ->
+            IntervalRow(
+                startFormatted = timeFmt.format(Date(interval.startMillis)),
+                endFormatted = timeFmt.format(Date(interval.endMillis)),
+                durationFormatted = formatDuration(interval.endMillis - interval.startMillis),
+            )
+        }
+        return AppDetailScreenState(
+            packageName = detail.packageName,
+            displayLabel = label,
+            isUninstalled = isUninstalled,
+            dateFormatted = dateFmt.format(Date(detail.dayStartMillis)),
+            totalUsageFormatted = formatDayDuration(detail.totalForegroundDurationMillis),
+            intervals = intervalRows,
+            showNoActivityMessage = detail.totalForegroundDurationMillis == 0L && intervalRows.isEmpty(),
         )
     }
 }

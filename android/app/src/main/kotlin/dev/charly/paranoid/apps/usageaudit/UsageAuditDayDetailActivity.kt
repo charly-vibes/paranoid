@@ -118,6 +118,16 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
             }
             row.addView(label)
             row.addView(duration)
+            app.packageName?.let { pkg ->
+                val dayStart = state.dayStartMillis
+                row.isClickable = true
+                row.isFocusable = true
+                row.setOnClickListener {
+                    startActivity(
+                        UsageAuditAppDetailActivity.newIntent(this, pkg, dayStart),
+                    )
+                }
+            }
             list.addView(row)
         }
     }

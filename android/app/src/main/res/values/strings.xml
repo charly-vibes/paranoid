@@ -27,6 +27,11 @@
     <string name="day_detail_total_label">total observed activity</string>
     <string name="day_detail_hourly_heading">Hourly distribution</string>
     <string name="day_detail_overnight_heading">Last night summary</string>
+    <string name="app_detail_title">App Detail</string>
+    <string name="app_detail_total_label">total observed activity</string>
+    <string name="app_detail_no_activity">No foreground activity was observed for this app on this day.</string>
+    <string name="app_detail_intervals_heading">Observed intervals</string>
+    <string name="app_detail_uninstalled_indicator">Uninstalled — package no longer resolvable</string>
     <string name="share_summary">Share Summary</string>
     <string name="export_csv">Export CSV</string>
     <string name="attribution_disclaimer">Battery figures are observations, not exact per-app measurements. Actual per-app drain cannot be determined from these readings.</string>

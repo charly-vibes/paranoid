@@ -47,6 +47,25 @@ class DayDetailPresenterTest {
     }
 
     @Test
+    fun `app rows carry their package name so day-to-app-detail navigation can be wired`() {
+        val start = dayStart(2026, Calendar.APRIL, 25)
+        val summary = DailyUsageSummary(
+            windowStartMillis = start,
+            windowEndMillis = start + 86_400_000L,
+            totalForegroundDurationMillis = 5_400_000L,
+            appsByForegroundDuration = listOf(
+                AppUsageSummary("com.example.chat", "Chat", 3_600_000L),
+                AppUsageSummary("com.example.reader", "Reader", 1_800_000L),
+            ),
+        )
+
+        val state = DayDetailPresenter.present(summary, timeZone = utc)
+
+        assertEquals("com.example.chat", state.apps[0].packageName)
+        assertEquals("com.example.reader", state.apps[1].packageName)
+    }
+
+    @Test
     fun `hourly bars render one entry per real hour on a normal day and total reconciles`() {
         val start = dayStart(2026, Calendar.APRIL, 25)
         val end = start + 86_400_000L

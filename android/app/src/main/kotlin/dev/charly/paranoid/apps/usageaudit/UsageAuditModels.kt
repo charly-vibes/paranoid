@@ -49,6 +49,25 @@ object RecentDaysEnumerator {
     }
 }
 
+data class AppForegroundInterval(
+    val startMillis: Long,
+    val endMillis: Long,
+)
+
+sealed interface AppLabel {
+    data class Installed(val label: String) : AppLabel
+    data object Uninstalled : AppLabel
+}
+
+data class AppDayDetail(
+    val packageName: String,
+    val appLabel: AppLabel,
+    val dayStartMillis: Long,
+    val dayEndMillis: Long,
+    val totalForegroundDurationMillis: Long,
+    val intervals: List<AppForegroundInterval>,
+)
+
 data class AppUsageSlice(
     val packageName: String,
     val appLabel: String,

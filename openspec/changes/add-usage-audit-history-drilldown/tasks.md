@@ -7,10 +7,10 @@
 - [x] 1.3 **Green:** implement/extend the aggregator so totals reconcile on 23/24/25-hour days. <!-- Slice A: aggregator already accepts arbitrary windows; DST hourly buckets handled in Slice B. -->
 - [x] 1.4 **Red:** write a failing unit test for an hourly foreground-time distribution that returns the actual hour count for the local day (DST-aware).
 - [x] 1.5 **Green:** implement the DST-aware hourly bucketing logic.
-- [ ] 1.6 **Red:** write a failing unit test for a `UsageStatsManager.queryEvents`-based adapter producing per-app foreground intervals (start/end) for a given day.
-- [ ] 1.7 **Green:** implement the events-based per-app interval extractor.
-- [ ] 1.8 **Red:** write a failing unit test for resolving an uninstalled package (no resolvable label) and surfacing an explicit "uninstalled" marker.
-- [ ] 1.9 **Green:** implement the package-resolution fallback.
+- [x] 1.6 **Red:** write a failing unit test for a `UsageStatsManager.queryEvents`-based adapter producing per-app foreground intervals (start/end) for a given day.
+- [x] 1.7 **Green:** implement the events-based per-app interval extractor.
+- [x] 1.8 **Red:** write a failing unit test for resolving an uninstalled package (no resolvable label) and surfacing an explicit "uninstalled" marker.
+- [x] 1.9 **Green:** implement the package-resolution fallback.
 - [ ] 1.10 **Refactor:** tidy shared day-window helpers and naming.
 
 ## 2. History list
@@ -29,14 +29,15 @@
 - [ ] 3.7 **Refactor:** unify Today and Day Detail rendering paths.
 
 ## 4. App Detail drill-down
-- [ ] 4.1 **Red:** write a failing UI test for App Detail showing total and observed intervals on a chosen day.
-- [ ] 4.2 **Green:** implement the App Detail screen.
-- [ ] 4.3 **Red:** write a failing UI test for the no-activity state.
-- [ ] 4.4 **Green:** implement the no-activity state.
-- [ ] 4.5 **Red:** write a failing UI test for the uninstalled-package state (raw package name + "uninstalled" indicator, intervals still shown).
-- [ ] 4.6 **Green:** implement the uninstalled-package presentation.
+- [x] 4.1 **Red:** write a failing UI test for App Detail showing total and observed intervals on a chosen day. <!-- Slice C: presenter-level test in AppDetailPresenterTest. -->
+- [x] 4.2 **Green:** implement the App Detail screen.
+- [x] 4.3 **Red:** write a failing UI test for the no-activity state.
+- [x] 4.4 **Green:** implement the no-activity state.
+- [x] 4.5 **Red:** write a failing UI test for the uninstalled-package state (raw package name + "uninstalled" indicator, intervals still shown).
+- [x] 4.6 **Green:** implement the uninstalled-package presentation.
 
 ## 5. Navigation and integration
-- [ ] 5.1 Add navigation entries: Today/History → Day Detail → App Detail; ensure Back works on all paths.
+- [x] 5.1 Add navigation entries: Today/History → Day Detail → App Detail; ensure Back works on all paths. <!-- Slice C: Day Detail row click → App Detail; Back via finish() on btn_back. -->
+<!-- 5.2 (functionality.md update) and 5.3 (verification + manual device check) deferred to Slice D (PARANOID-p5i.9). -->
 - [ ] 5.2 Update `usageaudit/spec/functionality.md` Screens table with new rows: `Day Detail` ("Per-day breakdown: ranked apps, hourly distribution, overnight summary") and `App Detail` ("Per-app foreground intervals for a selected day"), and amend the existing `History` row to reflect daily browsing.
 - [ ] 5.3 Run `just test` and confirm green.
