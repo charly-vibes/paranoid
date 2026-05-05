@@ -2,6 +2,24 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.7.0] — 2026-05-05
+
+### UsageAudit — History & Drill-Down
+
+- **History** now lists recent days within the platform-retained usage window with total foreground time per day
+- New **Day Detail** screen: full ranked app list, overnight summary, and hourly foreground-usage distribution for any past day
+- New **App Detail** screen: per-app drill-down for a chosen day showing observed foreground intervals and total time
+- **Share / CSV export** now scoped to the selected day from Day Detail (existing v1 CSV schema preserved)
+
+### Internal
+
+- Unified Today and Day Detail rendering via `DailyUsageSummary.toAppRows()`
+- Extracted `RecentDaysEnumerator.startOfLocalDay()`; added DST and past-day aggregator tests
+- Added ProGuard keep rules for `usageaudit`
+- Moved `ParanoidApp` to top-level package
+- CI now runs unit tests in the `build-android` job
+- Removed dead `DiagnosticsSchema.kt`
+
 ## [v0.6.0] — 2026-04-28
 
 ### UsageAudit — New Mini-App
