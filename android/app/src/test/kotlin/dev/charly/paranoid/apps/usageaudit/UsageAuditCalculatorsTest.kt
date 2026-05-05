@@ -1,5 +1,7 @@
 package dev.charly.paranoid.apps.usageaudit
 
+import java.util.Calendar
+import java.util.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -94,6 +96,94 @@ class DailyUsageAggregatorTest {
         )
 
         assertEquals(1_200L, summary.totalForegroundDurationMillis)
+    }
+
+    @Test
+    fun `daily summary aggregates over an arbitrary past day window from RecentDaysEnumerator`() {
+        // Anchor "now" to 2026-05-04 12:00 local; pick the day from 3 days ago.
+        val tz = TimeZone.getTimeZone("America/Los_Angeles")
+        val now = epochMillis(tz, 2026, Calendar.MAY, 4, 12, 0)
+        val pastDay = RecentDaysEnumerator.pastDayWindows(now, daysBack = 5, timeZone = tz)
+            .first { window ->
+                // Pick the day three calendar days before "today" (2026-05-01).
+                window.startMillis == epochMillis(tz, 2026, Calendar.MAY, 1, 0, 0)
+            }
+
+        val slices = listOf(
+            // Reader: 09:00 → 09:30 = 30 min
+            AppUsageSlice(
+                packageName = "dev.example.reader",
+                appLabel = "Reader",
+                windowStartMillis = pastDay.startMillis + 9 * MILLIS_PER_HOUR,
+                windowEndMillis = pastDay.startMillis + 9 * MILLIS_PER_HOUR + 30 * MILLIS_PER_MINUTE,
+                foregroundDurationMillis = 30 * MILLIS_PER_MINUTE,
+            ),
+            // Chat: 14:15 → 15:00 = 45 min
+            AppUsageSlice(
+                packageName = "dev.example.chat",
+                appLabel = "Chat",
+                windowStartMillis = pastDay.startMillis + 14 * MILLIS_PER_HOUR + 15 * MILLIS_PER_MINUTE,
+                windowEndMillis = pastDay.startMillis + 15 * MILLIS_PER_HOUR,
+                foregroundDurationMillis = 45 * MILLIS_PER_MINUTE,
+            ),
+            // Distractor on the *next* day, must not be counted.
+            AppUsageSlice(
+                packageName = "dev.example.music",
+                appLabel = "Music",
+                windowStartMillis = pastDay.endMillis + MILLIS_PER_HOUR,
+                windowEndMillis = pastDay.endMillis + 2 * MILLIS_PER_HOUR,
+                foregroundDurationMillis = MILLIS_PER_HOUR,
+            ),
+        )
+
+        val summary = DailyUsageAggregator.summarize(
+            windowStartMillis = pastDay.startMillis,
+            windowEndMillis = pastDay.endMillis,
+            slices = slices,
+        )
+
+        assertEquals(75 * MILLIS_PER_MINUTE, summary.totalForegroundDurationMillis)
+        assertEquals(listOf("Chat", "Reader"), summary.appsByForegroundDuration.map { it.appLabel })
+    }
+
+    @Test
+    fun `daily summary on a DST spring-forward past day equals the sum of overlapping slices`() {
+        val tz = TimeZone.getTimeZone("America/Los_Angeles")
+        // 2026-03-08 is the DST spring-forward day in Los Angeles (23-hour local day).
+        val dayStart = epochMillis(tz, 2026, Calendar.MARCH, 8, 0, 0)
+        val dayEnd = epochMillis(tz, 2026, Calendar.MARCH, 9, 0, 0)
+        assertEquals(23L * MILLIS_PER_HOUR, dayEnd - dayStart)
+
+        // Slice spans local 01:00 → 04:00 wall-clock; the 02:00 hour is skipped,
+        // so real elapsed foreground time is 2 hours.
+        val slice = AppUsageSlice(
+            packageName = "dev.example.reader",
+            appLabel = "Reader",
+            windowStartMillis = dayStart + 1 * MILLIS_PER_HOUR,
+            windowEndMillis = dayStart + 1 * MILLIS_PER_HOUR + 2 * MILLIS_PER_HOUR,
+            foregroundDurationMillis = 2 * MILLIS_PER_HOUR,
+        )
+
+        val summary = DailyUsageAggregator.summarize(
+            windowStartMillis = dayStart,
+            windowEndMillis = dayEnd,
+            slices = listOf(slice),
+        )
+
+        assertEquals(2 * MILLIS_PER_HOUR, summary.totalForegroundDurationMillis)
+        assertEquals(listOf("Reader"), summary.appsByForegroundDuration.map { it.appLabel })
+    }
+
+    private fun epochMillis(tz: TimeZone, year: Int, month: Int, day: Int, hour: Int, minute: Int): Long =
+        Calendar.getInstance(tz).apply {
+            clear()
+            set(year, month, day, hour, minute, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+    private companion object {
+        const val MILLIS_PER_MINUTE = 60L * 1_000L
+        const val MILLIS_PER_HOUR = 60L * MILLIS_PER_MINUTE
     }
 }
 

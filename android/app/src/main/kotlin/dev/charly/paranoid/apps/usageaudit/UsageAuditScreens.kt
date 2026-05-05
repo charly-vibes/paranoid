@@ -109,19 +109,27 @@ object DayDetailPresenter {
             dayStartMillis = summary.windowStartMillis,
             dateFormatted = dateFmt.format(Date(summary.windowStartMillis)),
             totalUsageFormatted = formatDayDuration(summary.totalForegroundDurationMillis),
-            apps = summary.appsByForegroundDuration.map { app ->
-                AppRow(
-                    label = app.appLabel,
-                    durationFormatted = formatDuration(app.foregroundDurationMillis),
-                    packageName = app.packageName,
-                )
-            },
+            apps = summary.toAppRows(),
             hourlyBars = bars,
             overnightSummary = overnightRow,
             showZeroUsageMessage = isZero,
         )
     }
 }
+
+/**
+ * Shared mapping from a [DailyUsageSummary]'s ranked apps to UI [AppRow]s.
+ * Used by both Today and Day Detail so the two rendering paths agree on
+ * label, duration formatting, and package name preservation.
+ */
+internal fun DailyUsageSummary.toAppRows(): List<AppRow> =
+    appsByForegroundDuration.map { app ->
+        AppRow(
+            label = app.appLabel,
+            durationFormatted = formatDuration(app.foregroundDurationMillis),
+            packageName = app.packageName,
+        )
+    }
 
 data class IntervalRow(
     val startFormatted: String,
@@ -213,12 +221,7 @@ object TodayScreenPresenter {
         }
         return TodayScreenState.Populated(
             totalUsageFormatted = formatDuration(summary.totalForegroundDurationMillis),
-            topApps = summary.appsByForegroundDuration.map { app ->
-                AppRow(
-                    label = app.appLabel,
-                    durationFormatted = formatDuration(app.foregroundDurationMillis),
-                )
-            },
+            topApps = summary.toAppRows(),
         )
     }
 }

@@ -67,13 +67,8 @@ class AndroidUsageAuditDataProvider(
     }
 
     private fun loadToday(adapter: UsageQueryAdapter): DailyUsageSummary? {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0)
-        cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0)
-        cal.set(Calendar.MILLISECOND, 0)
-        val dayStart = cal.timeInMillis
         val now = System.currentTimeMillis()
+        val dayStart = RecentDaysEnumerator.startOfLocalDay(now)
 
         val slices = adapter.queryToday(dayStart, now)
         if (slices.isEmpty()) return null

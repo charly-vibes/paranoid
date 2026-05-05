@@ -3,7 +3,7 @@
 
 ## 1. Day-scoped domain queries
 - [x] 1.1 Audit existing day-scoped methods in `UsageAuditDataProvider`/`UsageQueries` and reuse where possible; only extend if a target-day parameter is missing.
-- [ ] 1.2 **Red:** write a failing unit test for daily aggregation over an arbitrary past day (not only "today"), including a DST-affected day.
+- [x] 1.2 **Red:** write a failing unit test for daily aggregation over an arbitrary past day (not only "today"), including a DST-affected day. <!-- Slice D follow-up: added two tests in DailyUsageAggregatorTest — one using RecentDaysEnumerator.pastDayWindows + distractor next-day slice, one for a 23-hour DST spring-forward day. -->
 - [x] 1.3 **Green:** implement/extend the aggregator so totals reconcile on 23/24/25-hour days. <!-- Slice A: aggregator already accepts arbitrary windows; DST hourly buckets handled in Slice B. -->
 - [x] 1.4 **Red:** write a failing unit test for an hourly foreground-time distribution that returns the actual hour count for the local day (DST-aware).
 - [x] 1.5 **Green:** implement the DST-aware hourly bucketing logic.
@@ -11,7 +11,7 @@
 - [x] 1.7 **Green:** implement the events-based per-app interval extractor.
 - [x] 1.8 **Red:** write a failing unit test for resolving an uninstalled package (no resolvable label) and surfacing an explicit "uninstalled" marker.
 - [x] 1.9 **Green:** implement the package-resolution fallback.
-- [ ] 1.10 **Refactor:** tidy shared day-window helpers and naming.
+- [x] 1.10 **Refactor:** tidy shared day-window helpers and naming. <!-- Slice D follow-up: extracted RecentDaysEnumerator.startOfLocalDay() and reused it in pastDayWindows + AndroidUsageAuditDataProvider.loadToday, replacing the duplicated midnight-Calendar incantation. -->
 
 ## 2. History list
 - [x] 2.1 **Red:** write a failing test enumerating recent past days with totals from the platform-retained usage window; the current day MUST be excluded.
@@ -26,7 +26,7 @@
 - [x] 3.4 **Green:** implement the zero-usage state.
 - [x] 3.5 **Red:** write a failing test that Share/CSV export from Day Detail is scoped to the selected day and uses the existing v1 schema (no hourly or interval columns).
 - [x] 3.6 **Green:** wire the existing exporters to the selected day without extending the schema.
-- [ ] 3.7 **Refactor:** unify Today and Day Detail rendering paths.
+- [x] 3.7 **Refactor:** unify Today and Day Detail rendering paths. <!-- Slice D follow-up: extracted DailyUsageSummary.toAppRows() so TodayScreenPresenter and DayDetailPresenter share the same label/duration/packageName mapping. -->
 
 ## 4. App Detail drill-down
 - [x] 4.1 **Red:** write a failing UI test for App Detail showing total and observed intervals on a chosen day. <!-- Slice C: presenter-level test in AppDetailPresenterTest. -->

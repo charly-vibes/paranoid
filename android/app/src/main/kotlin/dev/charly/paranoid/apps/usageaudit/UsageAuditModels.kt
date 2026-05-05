@@ -12,6 +12,21 @@ data class DayWindow(
 
 object RecentDaysEnumerator {
     /**
+     * Returns the millis of the most recent local-midnight at or before [nowMillis] in
+     * [timeZone]. Shared helper for callers that need a DST-correct "start of today".
+     */
+    fun startOfLocalDay(
+        nowMillis: Long,
+        timeZone: TimeZone = TimeZone.getDefault(),
+    ): Long = Calendar.getInstance(timeZone).apply {
+        timeInMillis = nowMillis
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    /**
      * Returns past-day windows (midnight-to-midnight in [timeZone]) chronologically,
      * oldest first. The current local day is always excluded.
      *
@@ -24,14 +39,7 @@ object RecentDaysEnumerator {
     ): List<DayWindow> {
         if (daysBack <= 0) return emptyList()
 
-        val cal = Calendar.getInstance(timeZone).apply {
-            timeInMillis = nowMillis
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        val todayStart = cal.timeInMillis
+        val todayStart = startOfLocalDay(nowMillis, timeZone)
         val windows = ArrayList<DayWindow>(daysBack)
 
         // Build oldest first.
