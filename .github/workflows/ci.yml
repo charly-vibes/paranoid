@@ -16,7 +16,7 @@ jobs:
         uses: crate-ci/typos@v1.32.0
 
       - name: Shellcheck
-        run: shellcheck build-metadata.sh copy-assets.sh .devcontainer/setup.sh
+        run: shellcheck build-metadata.sh build-info.sh copy-assets.sh .devcontainer/setup.sh
 
       - name: Build metadata
         run: |
