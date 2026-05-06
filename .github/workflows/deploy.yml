@@ -22,14 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create .nojekyll
-        run: touch .nojekyll
-
-      - name: Build metadata and info
+      - name: Build metadata and stage site
         run: |
           sudo apt-get install -y -qq jq
           bash build-metadata.sh > apps-metadata.json
-          bash build-info.sh > build-info.json
+          bash copy-assets.sh _site
+          touch _site/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -37,7 +35,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment

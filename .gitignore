@@ -1,6 +1,7 @@
 # Generated
 apps-metadata.json
 build-info.json
+_site/
 
 # Signing
 *.keystore
