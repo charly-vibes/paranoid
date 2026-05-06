@@ -1,7 +1,6 @@
 package dev.charly.paranoid.apps.netdiag
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.util.TypedValue
@@ -73,11 +72,11 @@ class ComparisonResultActivity : AppCompatActivity() {
         // Status badge
         val badge = findViewById<TextView>(R.id.status_badge)
         val (statusText, statusColor) = when (summary.overallStatus) {
-            ComparisonStatus.IDENTICAL -> "IDENTICAL" to Color.parseColor("#4CAF50")
-            ComparisonStatus.MINOR_DIFF -> "MINOR DIFFERENCE" to Color.parseColor("#64B5F6")
-            ComparisonStatus.ONE_DEGRADED -> "ONE DEGRADED" to Color.parseColor("#FFB74D")
-            ComparisonStatus.BOTH_DEGRADED -> "BOTH DEGRADED" to Color.parseColor("#FF5252")
-            ComparisonStatus.INCOMPARABLE -> "INCOMPARABLE" to Color.parseColor("#FF5252")
+            ComparisonStatus.IDENTICAL -> "IDENTICAL" to getColor(R.color.status_ok)
+            ComparisonStatus.MINOR_DIFF -> "MINOR DIFFERENCE" to getColor(R.color.status_info)
+            ComparisonStatus.ONE_DEGRADED -> "ONE DEGRADED" to getColor(R.color.accent_warning)
+            ComparisonStatus.BOTH_DEGRADED -> "BOTH DEGRADED" to getColor(R.color.status_critical)
+            ComparisonStatus.INCOMPARABLE -> "INCOMPARABLE" to getColor(R.color.status_critical)
         }
         badge.text = statusText
         badge.background = GradientDrawable().apply {
@@ -161,7 +160,7 @@ class ComparisonResultActivity : AppCompatActivity() {
         // Metric name
         val metricText = TextView(this).apply {
             text = finding.metric
-            setTextColor(Color.parseColor("#FFFFFF"))
+            setTextColor(getColor(R.color.text_inverse))
             textSize = 14f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
@@ -176,11 +175,11 @@ class ComparisonResultActivity : AppCompatActivity() {
                     AffectedDevice.BOTH -> "Both"
                     AffectedDevice.NEITHER -> ""
                 }
-                setTextColor(Color.parseColor("#888888"))
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 11f
                 setPadding(dpToPxInt(6), dpToPxInt(2), dpToPxInt(6), dpToPxInt(2))
                 background = GradientDrawable().apply {
-                    setStroke(1, Color.parseColor("#555555"))
+                    setStroke(1, getColor(R.color.text_subtle))
                     cornerRadius = dpToPx(4f)
                 }
             }
@@ -200,7 +199,7 @@ class ComparisonResultActivity : AppCompatActivity() {
 
         val valA = TextView(this).apply {
             text = "A: ${finding.valueA}"
-            setTextColor(Color.parseColor("#CCCCCC"))
+            setTextColor(getColor(R.color.text_primary))
             textSize = 12f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -211,7 +210,7 @@ class ComparisonResultActivity : AppCompatActivity() {
 
         val valB = TextView(this).apply {
             text = "B: ${finding.valueB}"
-            setTextColor(Color.parseColor("#CCCCCC"))
+            setTextColor(getColor(R.color.text_primary))
             textSize = 12f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
@@ -243,20 +242,20 @@ class ComparisonResultActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dpToPxInt(1),
             ).apply { bottomMargin = dpToPxInt(8) }
-            setBackgroundColor(Color.parseColor("#333333"))
+            setBackgroundColor(getColor(R.color.surface_chip))
         }
         expandable.addView(divider)
 
         val explanationLabel = TextView(this).apply {
             text = "Explanation"
-            setTextColor(Color.parseColor("#888888"))
+            setTextColor(getColor(R.color.text_secondary))
             textSize = 11f
         }
         expandable.addView(explanationLabel)
 
         val explanationText = TextView(this).apply {
             text = finding.explanation
-            setTextColor(Color.parseColor("#CCCCCC"))
+            setTextColor(getColor(R.color.text_primary))
             textSize = 12f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -267,14 +266,14 @@ class ComparisonResultActivity : AppCompatActivity() {
 
         val recLabel = TextView(this).apply {
             text = "Recommendation"
-            setTextColor(Color.parseColor("#888888"))
+            setTextColor(getColor(R.color.text_secondary))
             textSize = 11f
         }
         expandable.addView(recLabel)
 
         val recText = TextView(this).apply {
             text = finding.recommendation
-            setTextColor(Color.parseColor("#CCCCCC"))
+            setTextColor(getColor(R.color.text_primary))
             textSize = 12f
         }
         expandable.addView(recText)
@@ -299,9 +298,9 @@ class ComparisonResultActivity : AppCompatActivity() {
     }
 
     private fun severityColor(severity: Severity): Int = when (severity) {
-        Severity.CRITICAL -> Color.parseColor("#FF5252")
-        Severity.WARNING -> Color.parseColor("#FFB74D")
-        Severity.INFO -> Color.parseColor("#64B5F6")
+        Severity.CRITICAL -> getColor(R.color.status_critical)
+        Severity.WARNING -> getColor(R.color.accent_warning)
+        Severity.INFO -> getColor(R.color.status_info)
     }
 
     private fun dpToPx(dp: Float): Float =

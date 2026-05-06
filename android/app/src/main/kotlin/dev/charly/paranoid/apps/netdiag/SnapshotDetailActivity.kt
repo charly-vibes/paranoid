@@ -1,7 +1,6 @@
 package dev.charly.paranoid.apps.netdiag
 
 import android.annotation.SuppressLint
-import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
@@ -117,7 +116,7 @@ class SnapshotDetailActivity : AppCompatActivity() {
 
         val indicator = TextView(this).apply {
             text = "▶"
-            setTextColor(Color.parseColor("#888888"))
+            setTextColor(getColor(R.color.text_secondary))
             textSize = 12f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -128,7 +127,7 @@ class SnapshotDetailActivity : AppCompatActivity() {
 
         val titleView = TextView(this).apply {
             text = title
-            setTextColor(Color.parseColor("#FFFFFF"))
+            setTextColor(getColor(R.color.text_inverse))
             textSize = 14f
             setTypeface(null, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -137,7 +136,7 @@ class SnapshotDetailActivity : AppCompatActivity() {
 
         val countView = TextView(this).apply {
             text = "${rows.size}"
-            setTextColor(Color.parseColor("#555555"))
+            setTextColor(getColor(R.color.text_subtle))
             textSize = 12f
         }
         headerRow.addView(countView)
@@ -162,7 +161,7 @@ class SnapshotDetailActivity : AppCompatActivity() {
 
             val labelView = TextView(this).apply {
                 text = label
-                setTextColor(Color.parseColor("#888888"))
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 12f
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.4f)
             }
@@ -170,7 +169,7 @@ class SnapshotDetailActivity : AppCompatActivity() {
 
             val valueView = TextView(this).apply {
                 text = value
-                setTextColor(Color.parseColor("#CCCCCC"))
+                setTextColor(getColor(R.color.text_primary))
                 textSize = 12f
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 0.6f)
             }

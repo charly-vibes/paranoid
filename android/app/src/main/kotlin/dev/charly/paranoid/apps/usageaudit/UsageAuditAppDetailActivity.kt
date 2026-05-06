@@ -87,7 +87,7 @@ class UsageAuditAppDetailActivity : AppCompatActivity() {
             }
             val window = TextView(this).apply {
                 text = "${row.startFormatted}–${row.endFormatted}"
-                setTextColor(0xFFCCCCCC.toInt())
+                setTextColor(getColor(R.color.text_primary))
                 textSize = 14f
                 layoutParams = LinearLayout.LayoutParams(
                     0,
@@ -97,7 +97,7 @@ class UsageAuditAppDetailActivity : AppCompatActivity() {
             }
             val duration = TextView(this).apply {
                 text = row.durationFormatted
-                setTextColor(0xFF888888.toInt())
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 14f
             }
             rowView.addView(window)

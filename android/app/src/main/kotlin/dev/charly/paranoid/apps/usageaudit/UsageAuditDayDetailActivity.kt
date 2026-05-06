@@ -103,7 +103,7 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
             }
             val label = TextView(this).apply {
                 text = app.label
-                setTextColor(0xFFCCCCCC.toInt())
+                setTextColor(getColor(R.color.text_primary))
                 textSize = 14f
                 layoutParams = LinearLayout.LayoutParams(
                     0,
@@ -113,7 +113,7 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
             }
             val duration = TextView(this).apply {
                 text = app.durationFormatted
-                setTextColor(0xFF888888.toInt())
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 14f
             }
             row.addView(label)
@@ -156,7 +156,7 @@ class UsageAuditDayDetailActivity : AppCompatActivity() {
                 }
             }
             val rect = View(this).apply {
-                setBackgroundColor(0xFFFFB74D.toInt())
+                setBackgroundColor(getColor(R.color.accent_warning))
                 val heightDp = (4 + 56 * bar.intensity).coerceAtLeast(2f)
                 layoutParams = LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,

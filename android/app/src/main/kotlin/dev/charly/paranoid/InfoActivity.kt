@@ -41,14 +41,14 @@ class InfoActivity : AppCompatActivity() {
 
         val labelView = TextView(this).apply {
             text = label
-            setTextColor(0xFF888888.toInt())
+            setTextColor(getColor(R.color.text_secondary))
             textSize = 13f
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
 
         val valueView = TextView(this).apply {
             text = value
-            setTextColor(0xFFE0E0E0.toInt())
+            setTextColor(getColor(R.color.text_emphasis))
             textSize = 13f
             typeface = android.graphics.Typeface.MONOSPACE
             textAlignment = TextView.TEXT_ALIGNMENT_TEXT_END

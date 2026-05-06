@@ -159,13 +159,13 @@ class UsageAuditActivity : AppCompatActivity() {
                     }
                     val date = TextView(this).apply {
                         text = entry.dateFormatted
-                        setTextColor(0xFFCCCCCC.toInt())
+                        setTextColor(getColor(R.color.text_primary))
                         textSize = 14f
                         layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                     }
                     val total = TextView(this).apply {
                         text = entry.totalUsageFormatted
-                        setTextColor(0xFFFFB74D.toInt())
+                        setTextColor(getColor(R.color.accent_warning))
                         textSize = 14f
                     }
 
@@ -194,7 +194,7 @@ class UsageAuditActivity : AppCompatActivity() {
         for (warning in warnings) {
             val tv = TextView(this).apply {
                 text = "⚠ $warning"
-                setTextColor(0xFFFFB74D.toInt())
+                setTextColor(getColor(R.color.accent_warning))
                 textSize = 13f
                 setPadding(0, 0, 0, 8)
             }
@@ -212,13 +212,13 @@ class UsageAuditActivity : AppCompatActivity() {
             }
             val label = TextView(this).apply {
                 text = app.label
-                setTextColor(0xFFCCCCCC.toInt())
+                setTextColor(getColor(R.color.text_primary))
                 textSize = 14f
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
             val duration = TextView(this).apply {
                 text = app.durationFormatted
-                setTextColor(0xFF888888.toInt())
+                setTextColor(getColor(R.color.text_secondary))
                 textSize = 14f
             }
             row.addView(label)
