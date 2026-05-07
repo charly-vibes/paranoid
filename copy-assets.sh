@@ -18,7 +18,7 @@ mkdir -p "$TARGET"
 bash build-info.sh > build-info.json
 
 # Copy hub page (HTML/CSS/JS, metadata, icons, logo)
-cp index.html info.html style.css script.js apps-metadata.json build-info.json \
+cp index.html info.html style.css script.js utils.js apps-metadata.json build-info.json \
    favicon.png apple-touch-icon.png paranoid_logo_bic_pen.svg "$TARGET/"
 
 # Copy each mini-app directory (excluding spec/ and sessions/)

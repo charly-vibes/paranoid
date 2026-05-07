@@ -108,6 +108,7 @@
         </div>
     </main>
 
+    <script src="utils.js"></script>
     <script>
     "use strict";
 
@@ -115,18 +116,7 @@
         return `<div class="row"><span class="label">${label}</span><span class="value ${cls || ''}">${value}</span></div>`;
     }
 
-    function loadJSON(url) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.open('GET', url);
-            xhr.onload = () => {
-                try { resolve(JSON.parse(xhr.responseText)); }
-                catch (e) { reject(e); }
-            };
-            xhr.onerror = () => reject(new Error('failed'));
-            xhr.send();
-        });
-    }
+    // loadJSON() comes from utils.js.
 
     function loadFile(url) {
         return new Promise((resolve, reject) => {
@@ -181,6 +171,7 @@
             ['index.html', 'Hub page'],
             ['style.css', 'Hub styles'],
             ['script.js', 'Hub script'],
+            ['utils.js', 'Shared helpers'],
             ['apps-metadata.json', 'App metadata'],
             ['build-info.json', 'Build info'],
         ];
