@@ -45,9 +45,13 @@ doctor:
 
 # Build the Docker image with Android SDK
 docker-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
     docker build -t {{docker_image}} -f - . <<'DOCKERFILE'
     FROM eclipse-temurin:17-jdk
-    RUN apt-get update -qq && apt-get install -y -qq unzip curl && rm -rf /var/lib/apt/lists/*
+    RUN apt-get update -qq && apt-get install -y -qq unzip curl git && rm -rf /var/lib/apt/lists/*
+    # Trust the mounted workspace regardless of host UID (docker only).
+    RUN git config --system --add safe.directory '*'
     ENV ANDROID_HOME=/opt/android-sdk
     RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
         cd /tmp && \
@@ -59,7 +63,7 @@ docker-build:
         $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" > /dev/null
     WORKDIR /app
     DOCKERFILE
-    @echo "✓ Docker image '{{docker_image}}' built"
+    echo "✓ Docker image '{{docker_image}}' built"
 
 # Run a gradle command in Docker
 _gradle +ARGS:

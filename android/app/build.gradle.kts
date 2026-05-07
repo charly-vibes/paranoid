@@ -1,9 +1,42 @@
+import java.io.ByteArrayOutputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.google.devtools.ksp")
 }
+
+// Derive versionName/versionCode from the most recent git tag (vX.Y.Z).
+// Falls back to 0.0.0 / 1 when git or tags are unavailable
+// (e.g., shallow clones, docker images without git).
+data class AppVersion(val code: Int, val name: String)
+
+fun resolveAppVersion(): AppVersion {
+    val tag = runCatching {
+        val stdout = ByteArrayOutputStream()
+        exec {
+            commandLine("git", "describe", "--tags", "--abbrev=0")
+            workingDir = rootDir
+            standardOutput = stdout
+            errorOutput = ByteArrayOutputStream()
+            isIgnoreExitValue = true
+        }
+        stdout.toString().trim()
+    }.getOrDefault("")
+
+    val parts = tag.removePrefix("v").split(".")
+        .map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
+    val major = parts.getOrElse(0) { 0 }
+    val minor = parts.getOrElse(1) { 0 }
+    val patch = parts.getOrElse(2) { 0 }
+
+    val code = (major * 10_000 + minor * 100 + patch).coerceAtLeast(1)
+    val name = if (tag.isEmpty()) "0.0.0" else "$major.$minor.$patch"
+    return AppVersion(code, name)
+}
+
+val appVersion = resolveAppVersion()
 
 android {
     namespace = "dev.charly.paranoid"
@@ -13,8 +46,8 @@ android {
         applicationId = "dev.charly.paranoid"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersion.code
+        versionName = appVersion.name
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
