@@ -64,7 +64,7 @@
 - [x] 3.3 **Red:** write a failing UI/instrumentation test for the missing-usage-access empty state inside the app.
 - [x] 3.4 **Green:** implement the smallest in-app empty state and Settings handoff UI to make the test pass.
 - [x] 3.5 **Refactor:** simplify permission-gating wiring and copy.
-- [ ] 3.6 **Manual:** verify the Settings handoff works on a device.
+- [x] 3.6 **Manual:** verify the Settings handoff works on a device.
 
 ### 3B. Usage queries
 - [x] 3.7 **Red:** write a failing test for mapping normalized Android usage results into the canonical daily domain input model.
@@ -83,7 +83,7 @@
 - [x] 3.18 **Red:** write a failing test for v1 reliability hooks: app-open and power-state-change capture.
 - [x] 3.19 **Green:** implement only the hooks required to satisfy the tests.
 - [x] 3.20 **Refactor:** reduce coupling between mappers, collectors, persistence, and app lifecycle hooks.
-- [ ] 3.21 **Manual:** verify overnight snapshot behavior on a real device.
+- [x] 3.21 **Manual:** verify overnight snapshot behavior on a real device.
 
 **Acceptance criteria:**
 - [x] 3.22 The app shows a clear action when usage access is missing.
@@ -169,15 +169,17 @@
 
 - [x] 7.1 Run unit tests for aggregators, summaries, exporters, and time-window edge cases.
 - [ ] 7.2 Run instrumentation/UI tests for in-app permission gating, empty states, and screen flows.
-- [ ] 7.3 Manually verify daytime usage summaries on a device with known app activity.
-- [ ] 7.4 Manually verify the Settings handoff for usage access on a device.
-- [ ] 7.5 Manually verify overnight battery audit behavior across at least one real night window.
-- [ ] 7.6 Manually verify wording for nights with no observed app activity and for nights with charging transitions.
-- [ ] 7.7 Verify CSV and plain-text share flows with at least one external target app.
+  > Deferred to PARANOID-xsz; not blocking v0.7.0 release.
+- [x] 7.3 Manually verify daytime usage summaries on a device with known app activity.
+- [x] 7.4 Manually verify the Settings handoff for usage access on a device.
+- [x] 7.5 Manually verify overnight battery audit behavior across at least one real night window.
+- [~] 7.6 Manually verify wording for nights with no observed app activity and for nights with charging transitions.
+  > Empty/incomplete-data wording verified ("Battery data may be incomplete for this window"). Charging-transition wording deferred to PARANOID-24g (no charging-overnight observed yet).
+- [x] 7.7 Verify CSV and plain-text share flows with at least one external target app.
 - [x] 7.8 Perform a wording audit to ensure user-facing battery text never claims exact per-app drain.
 - [x] 7.9 Tidy documentation and mark all completed tasks as done.
 
 **Acceptance criteria:**
 - [x] 7.10 Test runs are green.
-- [ ] 7.11 Manual checks confirm the app reports battery loss honestly without claiming exact per-app drain.
-- [ ] 7.12 Export/share flows produce usable outputs for real-world sharing.
+- [x] 7.11 Manual checks confirm the app reports battery loss honestly without claiming exact per-app drain.
+- [x] 7.12 Export/share flows produce usable outputs for real-world sharing.
