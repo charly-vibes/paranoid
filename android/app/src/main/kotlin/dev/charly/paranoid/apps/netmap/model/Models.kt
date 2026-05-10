@@ -56,6 +56,29 @@ data class Recording(
     val notes: String? = null
 )
 
+/**
+ * Approximate location of a single observed cell within one recording.
+ *
+ * `radiusM` is a heuristic uncertainty radius (NOT a 1-σ statistical bound).
+ * `cellKey` is a string key derived from MCC/MNC/TAC/cellId or PCI/EARFCN
+ * fallback; see [AntennaEstimator] for the exact derivation.
+ *
+ * `isPciOnly = true` when the estimate was derived from the PCI/EARFCN
+ * fallback key — PCI has only 504 LTE values and may collide between
+ * distinct physical sectors observed in the same recording, so consumers
+ * should display a "low confidence" badge for these.
+ */
+data class AntennaEstimate(
+    val recordingId: String,
+    val cellKey: String,
+    val technology: CellTech,
+    val location: GeoPoint,
+    val radiusM: Float,
+    val sampleCount: Int,
+    val strongestSignal: SignalLevel,
+    val isPciOnly: Boolean
+)
+
 object SignalLevelCalculator {
     fun fromLteRsrp(rsrp: Int?): SignalLevel = when {
         rsrp == null -> SignalLevel.NONE
