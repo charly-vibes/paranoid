@@ -19,6 +19,9 @@ import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.netmap.data.RecordingEntity
 import dev.charly.paranoid.apps.netmap.data.TelephonySource
+import dev.charly.paranoid.apps.netmap.data.toDomain
+import dev.charly.paranoid.apps.netmap.data.toEntity
+import dev.charly.paranoid.apps.netmap.estimate.AntennaEstimator
 import dev.charly.paranoid.apps.netmap.model.Measurement
 import dev.charly.paranoid.apps.netmap.model.GeoPoint
 import dev.charly.paranoid.apps.netmap.model.SignalLevel
@@ -181,10 +184,31 @@ class RecordingService : Service() {
             val recording = db.recordingDao().getById(id) ?: return@launch
             val lastTs = db.measurementDao().lastTimestamp(id)
             db.recordingDao().update(recording.copy(endedAt = lastTs ?: System.currentTimeMillis()))
+            // Compute + persist antenna estimates BEFORE deleteIfEmpty:
+            // deleteIfEmpty only removes the recording when it has 0
+            // measurements, in which case the estimator yields an empty list
+            // and the upsert is a no-op. CASCADE handles the cleanup if
+            // the recording is then removed.
+            persistAntennaEstimates(id)
             db.recordingDao().deleteIfEmpty(id)
             recordingId = null
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    /**
+     * Run [AntennaEstimator] over all persisted measurements for [recordingId]
+     * and upsert the results. Pure local work — no network I/O.
+     * See PARANOID-f0x.2 + spec netmap-data §Antenna Estimate Persistence.
+     */
+    private suspend fun persistAntennaEstimates(recordingId: String) {
+        val measurements = db.measurementDao()
+            .getByRecording(recordingId)
+            .map { it.toDomain() }
+        val estimates = AntennaEstimator.estimate(recordingId, measurements)
+        if (estimates.isNotEmpty()) {
+            db.antennaEstimateDao().upsertAll(estimates.map { it.toEntity() })
         }
     }
 
@@ -209,6 +233,7 @@ class RecordingService : Service() {
                     db.recordingDao().update(recording.copy(
                         endedAt = lastTs ?: System.currentTimeMillis()
                     ))
+                    persistAntennaEstimates(id)
                 }
             }
         }

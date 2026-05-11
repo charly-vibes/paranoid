@@ -19,17 +19,19 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
     entities = [
         RecordingEntity::class,
         MeasurementEntity::class,
+        AntennaEstimateEntity::class,
         DiagnosticsSessionEntity::class,
         DiagnosticsSnapshotEntity::class,
         DiagnosticsComparisonEntity::class,
         BatterySnapshotEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
     abstract fun recordingDao(): RecordingDao
     abstract fun measurementDao(): MeasurementDao
+    abstract fun antennaEstimateDao(): AntennaEstimateDao
     abstract fun sessionDao(): SessionDao
     abstract fun snapshotDao(): SnapshotDao
     abstract fun comparisonDao(): ComparisonDao
@@ -89,6 +91,32 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
+        // Additive migration: adds netmap_antenna_estimates only.
+        // No existing tables are altered. See PARANOID-f0x.2.
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS netmap_antenna_estimates (
+                        recordingId TEXT NOT NULL,
+                        cellKey TEXT NOT NULL,
+                        technology TEXT NOT NULL,
+                        lat REAL NOT NULL,
+                        lng REAL NOT NULL,
+                        radiusM REAL NOT NULL,
+                        sampleCount INTEGER NOT NULL,
+                        strongestSignal TEXT NOT NULL,
+                        isPciOnly INTEGER NOT NULL,
+                        PRIMARY KEY(recordingId, cellKey),
+                        FOREIGN KEY(recordingId) REFERENCES recordings(id) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_netmap_antenna_estimates_recordingId " +
+                        "ON netmap_antenna_estimates(recordingId)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ParanoidDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -96,7 +124,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                     ParanoidDatabase::class.java,
                     "paranoid.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build().also { instance = it }
             }
     }

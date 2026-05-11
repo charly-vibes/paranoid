@@ -10,12 +10,15 @@ import dev.charly.paranoid.apps.netmap.data.CellsJsonConverter
 import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.netmap.data.RecordingEntity
+import dev.charly.paranoid.apps.netmap.data.toDomain
+import dev.charly.paranoid.apps.netmap.data.toEntity
 import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
 import dev.charly.paranoid.apps.netmap.data.export.exportCellTowers
 import dev.charly.paranoid.apps.netmap.data.export.exportCsv
 import dev.charly.paranoid.apps.netmap.data.export.exportGeoJson
 import dev.charly.paranoid.apps.netmap.data.export.exportGpx
 import dev.charly.paranoid.apps.netmap.data.export.exportKml
+import dev.charly.paranoid.apps.netmap.estimate.AntennaEstimator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,6 +52,27 @@ class RecordingDetailActivity : AppCompatActivity() {
             val measurements = withContext(Dispatchers.IO) { db.measurementDao().getByRecording(recordingId) }
 
             if (recording == null) { finish(); return@launch }
+
+            // Lazy backfill: legacy recordings created before PARANOID-f0x
+            // have no antenna estimates. Compute and persist them once,
+            // off the main thread. Subsequent opens use the cached rows.
+            //
+            // Race note: opening detail concurrently with stopRecording()
+            // can briefly observe count == 0 here while the service is
+            // still computing. The DAO uses REPLACE on conflict and inputs
+            // are deterministic, so the duplicate work is harmless.
+            withContext(Dispatchers.IO) {
+                val dao = db.antennaEstimateDao()
+                if (dao.countForRecording(recordingId) == 0 && measurements.isNotEmpty()) {
+                    val estimates = AntennaEstimator.estimate(
+                        recordingId,
+                        measurements.map { it.toDomain() }
+                    )
+                    if (estimates.isNotEmpty()) {
+                        dao.upsertAll(estimates.map { it.toEntity() })
+                    }
+                }
+            }
 
             findViewById<TextView>(R.id.detail_title).text = recording.name
 

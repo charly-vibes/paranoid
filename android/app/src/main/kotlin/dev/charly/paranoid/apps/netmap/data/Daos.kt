@@ -1,7 +1,12 @@
+// NO-NETWORK INVARIANT (antenna estimate persistence)
+// The antenna estimates DAO is purely a local Room cache. It MUST NOT
+// reach the network. See AntennaEstimator.kt for the full invariant.
+
 package dev.charly.paranoid.apps.netmap.data
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
@@ -43,4 +48,22 @@ interface MeasurementDao {
 
     @Query("SELECT MAX(timestamp) FROM measurements WHERE recordingId = :recordingId")
     suspend fun lastTimestamp(recordingId: String): Long?
+}
+
+@Dao
+interface AntennaEstimateDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertAll(estimates: List<AntennaEstimateEntity>)
+
+    @Query("SELECT * FROM netmap_antenna_estimates WHERE recordingId = :recordingId")
+    fun flowForRecording(recordingId: String): Flow<List<AntennaEstimateEntity>>
+
+    @Query("SELECT * FROM netmap_antenna_estimates WHERE recordingId = :recordingId")
+    suspend fun getForRecording(recordingId: String): List<AntennaEstimateEntity>
+
+    @Query("SELECT COUNT(*) FROM netmap_antenna_estimates WHERE recordingId = :recordingId")
+    suspend fun countForRecording(recordingId: String): Int
+
+    @Query("DELETE FROM netmap_antenna_estimates WHERE recordingId = :recordingId")
+    suspend fun deleteForRecording(recordingId: String)
 }

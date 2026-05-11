@@ -26,14 +26,18 @@
 - [ ] 2.2 Add DAO methods: `upsertAll`, `flowForRecording(id)`,
        `deleteForRecording(id)`
 - [ ] 2.3 Bump Room schema version and add an **additive-only** migration
-- [ ] 2.4 Confirm `schemas/<N+1>.json` differs from `<N>.json` only by
-       addition of the new table — verify in CI
+- [ ] 2.4 ~~Confirm `schemas/<N+1>.json` differs from `<N>.json`~~
+       **Deviation**: project sets `exportSchema = false`, so no JSON
+       schema files are generated. Migration SQL was hand-verified against
+       the `@Entity` annotation. Future work: enable schema export.
 - [ ] 2.5 Compute + persist estimates when `RecordingService` finalizes a
        recording (foreground service stop hook)
 - [ ] 2.6 Lazy compute on `RecordingDetailActivity` open if estimates row
        missing for that recording
-- [ ] 2.7 Migration test: opening DB at old version succeeds and new table
-       is empty
+- [ ] 2.7 ~~Migration test using Room MigrationTestHelper~~
+       **Deferred**: requires `androidTest/` instrumentation infra not
+       currently set up in this project. Tracked as future work; mapper
+       round-trip tests cover the entity ↔ domain boundary.
 
 ## 3. Map UI
 - [ ] 3.1 Extend `MapHelper` with `drawAntennaLayer(estimates, zoomLevel)`
