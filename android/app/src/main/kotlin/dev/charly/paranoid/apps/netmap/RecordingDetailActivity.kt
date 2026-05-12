@@ -94,12 +94,65 @@ class RecordingDetailActivity : AppCompatActivity() {
             findViewById<TextView>(R.id.stat_signal).text =
                 if (avgRsrp != null) "$avgRsrp dBm" else "—"
 
+            // Antenna estimates: load once for tap lookup + initial render.
+            val estimates = withContext(Dispatchers.IO) {
+                db.antennaEstimateDao().getForRecording(recordingId).map { it.toDomain() }
+            }
+            val estimatesByKey = estimates.associateBy { it.cellKey }
+
             // Map
             mapView.getMapAsync { map ->
                 map.setStyle(MapHelper.TILE_URL) {
                     MapHelper.addTrackLayer(map, measurements)
                     MapHelper.boundsForMeasurements(measurements)?.let { bounds ->
                         map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 64))
+                    }
+                    if (antennaToggleEnabled()) {
+                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                    }
+                }
+
+                // Re-draw circles when zoom crosses the threshold so they
+                // appear/disappear at zoom 12.
+                map.addOnCameraIdleListener {
+                    if (antennaToggleEnabled()) {
+                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                    }
+                }
+
+                // Tap handler for antenna markers.
+                map.addOnMapClickListener { latLng ->
+                    if (!antennaToggleEnabled()) return@addOnMapClickListener false
+                    val screen = map.projection.toScreenLocation(latLng)
+                    val features = map.queryRenderedFeatures(screen, MapHelper.ANTENNA_MARKER_LAYER)
+                    val key = features.firstOrNull()?.getStringProperty(MapHelper.ANTENNA_PROP_KEY)
+                    val hit = key?.let { estimatesByKey[it] }
+                    if (hit != null) {
+                        AntennaDetailSheet.show(this@RecordingDetailActivity, hit)
+                        true
+                    } else false
+                }
+            }
+
+            // Antenna toggle: defaults ON for the detail screen.
+            val toggleBtn = findViewById<TextView>(R.id.btn_antenna_toggle)
+            val disclosure = findViewById<TextView>(R.id.antenna_disclosure)
+            fun applyToggleVisuals() {
+                val on = antennaToggleEnabled()
+                toggleBtn.setTextColor(
+                    android.graphics.Color.parseColor(if (on) "#44CCCC" else "#666666")
+                )
+                disclosure.visibility = if (on) android.view.View.VISIBLE else android.view.View.GONE
+            }
+            applyToggleVisuals()
+            toggleBtn.setOnClickListener {
+                setAntennaToggleEnabled(!antennaToggleEnabled())
+                applyToggleVisuals()
+                mapView.getMapAsync { map ->
+                    if (antennaToggleEnabled()) {
+                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                    } else {
+                        MapHelper.drawAntennaLayer(map, emptyList(), map.cameraPosition.zoom)
                     }
                 }
             }
@@ -109,6 +162,19 @@ class RecordingDetailActivity : AppCompatActivity() {
                 showExportDialog(recording, measurements)
             }
         }
+    }
+
+    private fun antennaToggleEnabled(): Boolean =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ANTENNA_DETAIL, true)
+
+    private fun setAntennaToggleEnabled(enabled: Boolean) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean(KEY_ANTENNA_DETAIL, enabled).apply()
+    }
+
+    companion object {
+        private const val PREFS = "netmap_prefs"
+        private const val KEY_ANTENNA_DETAIL = "show_antennas_detail"
     }
 
     private fun showExportDialog(recording: RecordingEntity, measurements: List<MeasurementEntity>) {

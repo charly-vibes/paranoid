@@ -43,6 +43,18 @@
             android:singleLine="true" />
 
         <TextView
+            android:id="@+id/btn_antenna_toggle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="📡"
+            android:textColor="#44CCCC"
+            android:textSize="18sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Show antennas" />
+
+        <TextView
             android:id="@+id/btn_export"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
@@ -55,6 +67,21 @@
             android:clickable="true"
             android:focusable="true" />
     </LinearLayout>
+
+    <!-- Antenna disclosure (visible when antenna layer is enabled) -->
+    <TextView
+        android:id="@+id/antenna_disclosure"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:layout_marginTop="64dp"
+        android:layout_marginStart="12dp"
+        android:background="#CC121212"
+        android:padding="6dp"
+        android:text="Approximate — based on observed signal"
+        android:textColor="#AAAAAA"
+        android:textSize="10sp"
+        android:visibility="visible" />
 
     <!-- Stats overlay -->
     <LinearLayout

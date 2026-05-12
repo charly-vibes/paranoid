@@ -20,6 +20,9 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.location.LocationServices
 import dev.charly.paranoid.R
+import dev.charly.paranoid.apps.netmap.estimate.AntennaEstimator
+import dev.charly.paranoid.apps.netmap.model.AntennaEstimate
+import dev.charly.paranoid.apps.netmap.model.Measurement
 import dev.charly.paranoid.apps.netmap.model.SignalLevel
 import dev.charly.paranoid.apps.netmap.service.RecordingService
 import kotlinx.coroutines.launch
@@ -35,6 +38,15 @@ class NetMapActivity : AppCompatActivity() {
     private var map: MapLibreMap? = null
     private var service: RecordingService? = null
     private var bound = false
+
+    // Live in-memory antenna estimator state (PARANOID-f0x.3, design D7).
+    // Buffer mirrors RecordingService.latestMeasurement; recomputed every
+    // [LIVE_RECOMPUTE_EVERY] new measurements while the toggle is enabled.
+    // Estimates are NOT persisted from here — the service does that on
+    // finalize.
+    private val liveBuffer: MutableList<Measurement> = mutableListOf()
+    private var lastLiveEstimates: List<AntennaEstimate> = emptyList()
+    private var lastLiveEstimatesByKey: Map<String, AntennaEstimate> = emptyMap()
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
@@ -84,7 +96,101 @@ class NetMapActivity : AppCompatActivity() {
             }
         }
 
+        wireAntennaToggle()
+
         requestPermissions()
+    }
+
+    private fun wireAntennaToggle() {
+        val toggleBtn = findViewById<TextView>(R.id.btn_antenna_toggle)
+        val disclosure = findViewById<TextView>(R.id.antenna_disclosure)
+
+        fun applyVisuals() {
+            val on = antennaToggleEnabled()
+            toggleBtn.setTextColor(
+                android.graphics.Color.parseColor(if (on) "#44CCCC" else "#666666")
+            )
+            disclosure.visibility = if (on) TextView.VISIBLE else TextView.GONE
+        }
+        applyVisuals()
+
+        toggleBtn.setOnClickListener {
+            setAntennaToggleEnabled(!antennaToggleEnabled())
+            applyVisuals()
+            // Toggle ON mid-recording: immediately recompute on the current
+            // buffer (don't wait for the next 10-measurement boundary).
+            if (antennaToggleEnabled()) {
+                recomputeLiveEstimatesAndDraw()
+            } else {
+                map?.let {
+                    MapHelper.drawAntennaLayer(it, emptyList(), it.cameraPosition.zoom)
+                }
+            }
+        }
+
+        // Tap handler for antenna markers.
+        mapView.getMapAsync { m ->
+            m.addOnMapClickListener { latLng ->
+                if (!antennaToggleEnabled()) return@addOnMapClickListener false
+                val screen = m.projection.toScreenLocation(latLng)
+                val features = m.queryRenderedFeatures(screen, MapHelper.ANTENNA_MARKER_LAYER)
+                val key = features.firstOrNull()?.getStringProperty(MapHelper.ANTENNA_PROP_KEY)
+                val hit = key?.let { lastLiveEstimatesByKey[it] }
+                if (hit != null) {
+                    AntennaDetailSheet.show(this@NetMapActivity, hit)
+                    true
+                } else false
+            }
+            // Re-apply circle visibility on zoom changes.
+            m.addOnCameraIdleListener {
+                if (antennaToggleEnabled() && lastLiveEstimates.isNotEmpty()) {
+                    MapHelper.drawAntennaLayer(m, lastLiveEstimates, m.cameraPosition.zoom)
+                }
+            }
+        }
+    }
+
+    /**
+     * Recompute and render in-memory estimates from [liveBuffer].
+     *
+     * Runs the O(n²) clustering on [Dispatchers.Default] to keep the main
+     * thread responsive on long recordings. The recordingId field is set
+     * to "live" — the value is informational only because these estimates
+     * are NEVER persisted (the canonical persisted estimates are written
+     * by [RecordingService] on finalize).
+     */
+    private fun recomputeLiveEstimatesAndDraw() {
+        val snapshot = liveBuffer.toList()
+        lifecycleScope.launch {
+            val computed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                AntennaEstimator.estimate("live", snapshot)
+            }
+            lastLiveEstimates = computed
+            lastLiveEstimatesByKey = computed.associateBy { it.cellKey }
+            map?.let { MapHelper.drawAntennaLayer(it, computed, it.cameraPosition.zoom) }
+        }
+    }
+
+    private fun antennaToggleEnabled(): Boolean =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ANTENNA_LIVE, false)
+
+    private fun setAntennaToggleEnabled(enabled: Boolean) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean(KEY_ANTENNA_LIVE, enabled).apply()
+    }
+
+    companion object {
+        private const val PREFS = "netmap_prefs"
+        private const val KEY_ANTENNA_LIVE = "show_antennas_live"
+        private const val LIVE_RECOMPUTE_EVERY = 10
+
+        /**
+         * Cap on the in-memory live buffer (≈20 minutes at 2 s sample
+         * interval). Older measurements are dropped for live estimation
+         * only — the canonical estimates computed on finalize see all
+         * persisted measurements.
+         */
+        private const val LIVE_BUFFER_MAX = 600
     }
 
     override fun onStart() {
@@ -162,6 +268,31 @@ class NetMapActivity : AppCompatActivity() {
                             LatLng(m.location.lat, m.location.lng)
                         )
                     )
+                }
+
+                // Feed the live antenna estimator (PARANOID-f0x.3, design D7).
+                // Bounded ring-buffer: cap at LIVE_BUFFER_MAX to keep memory
+                // and per-recompute cost stable on entry-level devices.
+                liveBuffer.add(m)
+                while (liveBuffer.size > LIVE_BUFFER_MAX) liveBuffer.removeAt(0)
+                if (antennaToggleEnabled() &&
+                    liveBuffer.size % LIVE_RECOMPUTE_EVERY == 0
+                ) {
+                    recomputeLiveEstimatesAndDraw()
+                }
+            }
+        }
+
+        // Reset the live buffer when a recording stops (next session starts fresh).
+        lifecycleScope.launch {
+            svc.isRecording.collect { recording ->
+                if (!recording) {
+                    liveBuffer.clear()
+                    lastLiveEstimates = emptyList()
+                    lastLiveEstimatesByKey = emptyMap()
+                    map?.let {
+                        MapHelper.drawAntennaLayer(it, emptyList(), it.cameraPosition.zoom)
+                    }
                 }
             }
         }

@@ -3,10 +3,13 @@ package dev.charly.paranoid.apps.netmap
 import android.graphics.Color
 import dev.charly.paranoid.apps.netmap.data.CellsJsonConverter
 import dev.charly.paranoid.apps.netmap.data.MeasurementEntity
+import dev.charly.paranoid.apps.netmap.model.AntennaEstimate
 import dev.charly.paranoid.apps.netmap.model.SignalLevel
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -89,5 +92,125 @@ object MapHelper {
         val builder = LatLngBounds.Builder()
         measurements.forEach { builder.include(LatLng(it.lat, it.lng)) }
         return builder.build()
+    }
+
+    // ---- Antenna layer (PARANOID-f0x.3) ---------------------------------
+
+    const val ANTENNA_MARKER_LAYER = "antenna-marker-layer"
+    const val ANTENNA_MARKER_SOURCE = "antenna-marker-source"
+    const val ANTENNA_CIRCLE_LAYER = "antenna-circle-layer"
+    const val ANTENNA_CIRCLE_SOURCE = "antenna-circle-source"
+
+    /** GeoJSON property carrying the JSON-serialized AntennaEstimate.cellKey. */
+    const val ANTENNA_PROP_KEY = "cellKey"
+
+    /**
+     * Draw the antenna layer.
+     *
+     * - Always renders a colored marker at each estimate's location.
+     * - When `zoomLevel >= 12`, also renders a translucent confidence
+     *   polygon (24-vertex circle approximation) of `radiusM` meters.
+     *   At lower zooms the circles are skipped to keep the map readable.
+     */
+    fun drawAntennaLayer(map: MapLibreMap, estimates: List<AntennaEstimate>, zoomLevel: Double) {
+        val style = map.style ?: return
+
+        // Always rebuild — caller decides when to call this.
+        style.removeLayer(ANTENNA_MARKER_LAYER)
+        style.removeLayer(ANTENNA_CIRCLE_LAYER)
+        style.removeSource(ANTENNA_MARKER_SOURCE)
+        style.removeSource(ANTENNA_CIRCLE_SOURCE)
+
+        if (estimates.isEmpty()) return
+
+        // Marker source: one Point feature per estimate.
+        val markerFeatures = JSONArray()
+        for (e in estimates) {
+            markerFeatures.put(JSONObject().apply {
+                put("type", "Feature")
+                put("geometry", JSONObject().apply {
+                    put("type", "Point")
+                    put("coordinates", JSONArray().apply {
+                        put(e.location.lng); put(e.location.lat)
+                    })
+                })
+                put("properties", JSONObject().apply {
+                    put(ANTENNA_PROP_KEY, e.cellKey)
+                    put("color", signalColorHex(e.strongestSignal))
+                })
+            })
+        }
+        style.addSource(GeoJsonSource(ANTENNA_MARKER_SOURCE, JSONObject().apply {
+            put("type", "FeatureCollection")
+            put("features", markerFeatures)
+        }.toString()))
+
+        style.addLayer(
+            CircleLayer(ANTENNA_MARKER_LAYER, ANTENNA_MARKER_SOURCE).withProperties(
+                PropertyFactory.circleRadius(7f),
+                PropertyFactory.circleColor(Expression.get("color")),
+                PropertyFactory.circleStrokeWidth(2f),
+                PropertyFactory.circleStrokeColor("#FFFFFF")
+            )
+        )
+
+        // Confidence circles only at zoomLevel >= 12 to avoid overlap soup.
+        if (zoomLevel < ANTENNA_CIRCLE_MIN_ZOOM) return
+
+        val circleFeatures = JSONArray()
+        for (e in estimates) {
+            val coords = circlePolygonCoordinates(e.location.lat, e.location.lng, e.radiusM.toDouble())
+            circleFeatures.put(JSONObject().apply {
+                put("type", "Feature")
+                put("geometry", JSONObject().apply {
+                    put("type", "Polygon")
+                    put("coordinates", JSONArray().apply { put(coords) })
+                })
+                put("properties", JSONObject().apply {
+                    put("color", signalColorHex(e.strongestSignal))
+                })
+            })
+        }
+        style.addSource(GeoJsonSource(ANTENNA_CIRCLE_SOURCE, JSONObject().apply {
+            put("type", "FeatureCollection")
+            put("features", circleFeatures)
+        }.toString()))
+
+        style.addLayerBelow(
+            org.maplibre.android.style.layers.FillLayer(ANTENNA_CIRCLE_LAYER, ANTENNA_CIRCLE_SOURCE)
+                .withProperties(
+                    PropertyFactory.fillColor(Expression.get("color")),
+                    PropertyFactory.fillOpacity(0.15f)
+                ),
+            ANTENNA_MARKER_LAYER
+        )
+    }
+
+    /** Below this zoom level, antenna confidence circles are not drawn. */
+    const val ANTENNA_CIRCLE_MIN_ZOOM: Double = 12.0
+
+    /**
+     * Approximate a geographic circle as a 24-vertex polygon ring.
+     * Good enough for visual confidence-radius display at city scale.
+     * Returned as a JSONArray of [lng, lat] pairs, ring closed.
+     */
+    private fun circlePolygonCoordinates(
+        lat: Double, lng: Double, radiusM: Double, segments: Int = 24
+    ): JSONArray {
+        val ring = JSONArray()
+        val rEarth = 6_371_000.0
+        val angularRadius = radiusM / rEarth
+        val latRad = Math.toRadians(lat)
+        for (i in 0..segments) {
+            val theta = 2 * Math.PI * i / segments
+            // Equirectangular offset, accurate within a few % at small radii.
+            val dLat = angularRadius * kotlin.math.cos(theta)
+            val dLng = angularRadius * kotlin.math.sin(theta) / kotlin.math.cos(latRad)
+            ring.put(JSONArray().apply {
+                put(lng + Math.toDegrees(dLng))
+                put(lat + Math.toDegrees(dLat))
+            })
+        }
+        return ring
     }
 }
