@@ -57,14 +57,22 @@
        triggered every 10 measurements while toggle is enabled
 
 ## 4. Privacy guardrails
-- [ ] 4.1 Add a project-level `detekt` rule that fails CI when any file under
-       `…/netmap/estimate/` (or its caller in `RecordingService`) imports a
-       networking class (`java.net.*`, `okhttp3.*`, `java.nio.channels.*`)
-- [ ] 4.2 Add a runtime JUnit test that installs a `SecurityManager`-based or
-       `OkHttp` interceptor sentinel and fails when the estimator opens any
-       `Socket` or `HttpURLConnection`
+- [ ] 4.1 ~~Project-level `detekt` rule~~ **Deviation**: detekt is not
+       configured in this project. Replaced by a source-level JVM unit
+       test (`AntennaEstimatorPrivacyTest`) that scans the guarded files
+       for forbidden imports (`java.net.*`, `java.nio.channels.*`,
+       `okhttp3.*`, `retrofit2.*`, `android.net.http.*`,
+       `com.android.volley.*`, `javax.net.ssl.*`). If detekt is later
+       adopted, replace the unit test with a custom rule.
+- [ ] 4.2 ~~Runtime SecurityManager / OkHttp interceptor sentinel~~
+       **Deferred**: `SecurityManager` is deprecated since JVM 17 and not
+       honored uniformly under the Android JUnit runner. The estimator is
+       a pure in-memory function with **no networking imports** (verified
+       in 4.1), making a runtime sentinel redundant. Track as future work
+       once instrumentation tests are set up.
 - [ ] 4.3 Add a `// NO-NETWORK INVARIANT` banner header to
-       `AntennaEstimator.kt` and the new DAO file documenting the invariant
+       `AntennaEstimator.kt`, `AntennaEstimateMapper.kt`, and `Daos.kt`
+       — verified by `AntennaEstimatorPrivacyTest`.
 
 ## 5. Verification
 - [ ] 5.1 `just test` passes (all new + existing unit tests green)
