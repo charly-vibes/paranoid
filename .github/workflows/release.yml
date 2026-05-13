@@ -51,3 +51,6 @@ jobs:
         with:
           files: android/app/build/outputs/apk/release/paranoid-*.apk
           generate_release_notes: true
+          # Tags containing a hyphen (e.g. v0.8.0-rc.1, v1.0.0-beta) are
+          # treated as pre-releases. Plain semver tags ship as stable.
+          prerelease: ${{ contains(github.ref_name, '-') }}
