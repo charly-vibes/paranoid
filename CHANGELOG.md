@@ -2,6 +2,43 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.8.0] — 2026-05-12
+
+### NetMap — Approximate Antenna Locations
+
+- New **antenna layer** on the recording detail view: each unique cell observed during a recording is shown as a colored marker at its signal-weighted estimated location, with a translucent confidence circle (drawn at zoom ≥ 12) sized by the estimate's heuristic uncertainty radius
+- Tap any marker to open a **bottom sheet** showing technology, MCC/MNC, cell ID, TAC, PCI, EARFCN, sample count, strongest signal, and estimated radius
+- "Low confidence" badge displayed when fewer than 5 samples contributed, or when the estimate could only be derived from PCI/EARFCN (which may collide between distinct sectors)
+- New **"Show antennas"** toggle in both screens' toolbars (📡 icon) — defaults **on** in recording detail, **off** on the live map. Persisted per-screen
+- Live map shows in-memory estimates that recompute every 10 measurements while recording — no waiting for the recording to stop
+- "Approximate — based on observed signal" disclosure label visible whenever the antenna layer is on
+
+### Privacy invariant
+
+- All antenna estimation is **fully on-device** — no OpenCellID, Google Geolocation, or similar lookup is ever performed
+- The estimator's source files carry a `// NO-NETWORK INVARIANT` banner enforced by a JVM unit test that scans for any networking import (`java.net.*`, `okhttp3.*`, `javax.net.ssl.*`, …) and any fully-qualified networking reference
+
+### Internal
+
+- New `AntennaEstimator` pure function: signal-weighted centroid + 5 m single-link clustering (dampens stationary bias) + heuristic radius `max(50 m, 0.5 × spread, mean GPS accuracy)`
+- New `netmap_antenna_estimates` Room table (composite PK `(recordingId, cellKey)`, additive migration v3→v4, CASCADE on recording delete)
+- Estimates computed and persisted by `RecordingService` on finalize; lazily backfilled on detail-view open for legacy recordings
+- Live in-memory buffer bounded at 600 samples (~20 min at 2 s interval) to keep memory predictable on entry-level devices; clustering runs on `Dispatchers.Default` to avoid Main-thread ANR
+
+### Build / CI
+
+- Version code & name now derived from git tags ([PARANOID-1sh](https://github.com/charly-vibes/paranoid/issues))
+- Gradle dependency caching via `setup-gradle@v4` in CI
+- `build-info.sh` covered by the existing shellcheck job
+- GitHub Pages deploy scoped to web assets only
+
+### Web / docs
+
+- Hardcoded colors extracted to `colors.xml` resource
+- `loadJSON` deduplicated into shared `utils.js`
+- `apps-metadata.json` formatting cleaned up in `build-metadata.sh`
+- `ParanoidApp` moved to top-level package; ProGuard keep rules added for `usageaudit`
+
 ## [v0.7.0] — 2026-05-05
 
 ### UsageAudit — History & Drill-Down
