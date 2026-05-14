@@ -1,0 +1,1 @@
+Created two OpenSpec proposals for NN exploration: add-nn-adapt-lab for fixed LiteRT inference plus pure-Kotlin adaptive layer, and add-nn-training-lab for isolated user-triggered tiny-model on-device fine-tuning with checkpoint/rollback and thermal/battery policy. Both validate with openspec --strict.
