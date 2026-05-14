@@ -84,8 +84,11 @@
 ## 5. Verification
 - [x] 5.1 `just test` passes (all new + existing unit tests green)
 - [x] 5.2 `just build` produces a debug APK
-- [ ] 5.3 Manual smoke test on a recorded trip: estimates appear, tapping
+- [x] 5.3 Manual smoke test on a recorded trip: estimates appear, tapping
        opens the sheet, toggle works, no network requests in `adb logcat`
-- [ ] 5.4 Manual smoke test on `NetMapActivity` while recording: enabling
+       (verified on v0.8.0-rc.1; rc.2 added low-confidence filtering after
+       neighbor LTE / PCI-only estimates produced visual clutter)
+- [x] 5.4 Manual smoke test on `NetMapActivity` while recording: enabling
        toggle adds markers within ~20 s and they update as new cells appear
+       (verified on v0.8.0-rc.1)
 - [x] 5.5 `openspec validate add-netmap-antenna-locations --strict` passes
