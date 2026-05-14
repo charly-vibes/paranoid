@@ -12,6 +12,7 @@ All notable changes to Paranoid are documented here.
 - New **"Show antennas"** toggle in both screens' toolbars (📡 icon) — defaults **on** in recording detail, **off** on the live map. Persisted per-screen
 - Live map shows in-memory estimates that recompute every 10 measurements while recording — no waiting for the recording to stop
 - "Approximate — based on observed signal" disclosure label visible whenever the antenna layer is on
+- **Low-confidence estimates hidden by default** (rc.2): PCI-only fallback estimates and cells with fewer than 3 samples are filtered out of the map, and confidence circles are only drawn for high-confidence estimates. Long-press the 📡 toggle to switch to "show all" if you want to see the noise too. Driven by rc.1 smoke testing where neighbor LTE cells visually overwhelmed serving cells along the recorded path.
 
 ### Privacy invariant
 

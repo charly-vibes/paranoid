@@ -77,7 +77,23 @@ data class AntennaEstimate(
     val sampleCount: Int,
     val strongestSignal: SignalLevel,
     val isPciOnly: Boolean
-)
+) {
+    /**
+     * Heuristic for "this estimate is too noisy to render by default".
+     *
+     * Driven by real-trip feedback (PARANOID-f0x): neighbor LTE cells
+     * commonly flicker into view for one or two measurements with no
+     * `cellId`, producing PCI-only fallback estimates that pile up at
+     * the user's path. Hiding them by default tames the visual noise
+     * while still leaving them available behind a "show all" toggle.
+     */
+    val isLowConfidence: Boolean
+        get() = isPciOnly || sampleCount < LOW_CONFIDENCE_SAMPLE_THRESHOLD
+
+    companion object {
+        const val LOW_CONFIDENCE_SAMPLE_THRESHOLD = 3
+    }
+}
 
 object SignalLevelCalculator {
     fun fromLteRsrp(rsrp: Int?): SignalLevel = when {

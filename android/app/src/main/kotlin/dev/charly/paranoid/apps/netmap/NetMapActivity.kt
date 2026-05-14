@@ -128,6 +128,27 @@ class NetMapActivity : AppCompatActivity() {
             }
         }
 
+        // Long-press toggles low-confidence visibility (PARANOID-f0x rc.1
+        // smoke: PCI-only neighbor cells overwhelmed the map by default).
+        toggleBtn.setOnLongClickListener {
+            val newVal = !showLowConfidence()
+            setShowLowConfidence(newVal)
+            android.widget.Toast.makeText(
+                this@NetMapActivity,
+                if (newVal) "Antennas: showing all (incl. low-confidence)"
+                else "Antennas: high-confidence only",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            if (antennaToggleEnabled() && lastLiveEstimates.isNotEmpty()) {
+                map?.let {
+                    MapHelper.drawAntennaLayer(
+                        it, lastLiveEstimates, it.cameraPosition.zoom, newVal
+                    )
+                }
+            }
+            true
+        }
+
         // Tap handler for antenna markers.
         mapView.getMapAsync { m ->
             m.addOnMapClickListener { latLng ->
@@ -144,7 +165,9 @@ class NetMapActivity : AppCompatActivity() {
             // Re-apply circle visibility on zoom changes.
             m.addOnCameraIdleListener {
                 if (antennaToggleEnabled() && lastLiveEstimates.isNotEmpty()) {
-                    MapHelper.drawAntennaLayer(m, lastLiveEstimates, m.cameraPosition.zoom)
+                    MapHelper.drawAntennaLayer(
+                        m, lastLiveEstimates, m.cameraPosition.zoom, showLowConfidence()
+                    )
                 }
             }
         }
@@ -167,7 +190,11 @@ class NetMapActivity : AppCompatActivity() {
             }
             lastLiveEstimates = computed
             lastLiveEstimatesByKey = computed.associateBy { it.cellKey }
-            map?.let { MapHelper.drawAntennaLayer(it, computed, it.cameraPosition.zoom) }
+            map?.let {
+                MapHelper.drawAntennaLayer(
+                    it, computed, it.cameraPosition.zoom, showLowConfidence()
+                )
+            }
         }
     }
 
@@ -179,9 +206,18 @@ class NetMapActivity : AppCompatActivity() {
             .putBoolean(KEY_ANTENNA_LIVE, enabled).apply()
     }
 
+    private fun showLowConfidence(): Boolean =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ANTENNA_LOW_CONF, false)
+
+    private fun setShowLowConfidence(enabled: Boolean) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean(KEY_ANTENNA_LOW_CONF, enabled).apply()
+    }
+
     companion object {
         private const val PREFS = "netmap_prefs"
         private const val KEY_ANTENNA_LIVE = "show_antennas_live"
+        private const val KEY_ANTENNA_LOW_CONF = "show_antennas_low_conf_live"
         private const val LIVE_RECOMPUTE_EVERY = 10
 
         /**

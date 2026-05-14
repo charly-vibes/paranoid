@@ -107,12 +107,21 @@ object MapHelper {
     /**
      * Draw the antenna layer.
      *
-     * - Always renders a colored marker at each estimate's location.
+     * - Always renders a colored marker at each (rendered) estimate's location.
      * - When `zoomLevel >= 12`, also renders a translucent confidence
-     *   polygon (24-vertex circle approximation) of `radiusM` meters.
+     *   polygon (24-vertex circle approximation) of `radiusM` meters,
+     *   but only for high-confidence estimates (PARANOID-f0x rc.1 smoke).
      *   At lower zooms the circles are skipped to keep the map readable.
+     * - By default `showLowConfidence = false` filters out PCI-only and
+     *   single-sample neighbor estimates that produced visual noise on
+     *   real recordings. Pass `true` to include everything.
      */
-    fun drawAntennaLayer(map: MapLibreMap, estimates: List<AntennaEstimate>, zoomLevel: Double) {
+    fun drawAntennaLayer(
+        map: MapLibreMap,
+        estimates: List<AntennaEstimate>,
+        zoomLevel: Double,
+        showLowConfidence: Boolean = false
+    ) {
         val style = map.style ?: return
 
         // Always rebuild — caller decides when to call this.
@@ -121,11 +130,12 @@ object MapHelper {
         style.removeSource(ANTENNA_MARKER_SOURCE)
         style.removeSource(ANTENNA_CIRCLE_SOURCE)
 
-        if (estimates.isEmpty()) return
+        val visible = if (showLowConfidence) estimates else estimates.filter { !it.isLowConfidence }
+        if (visible.isEmpty()) return
 
         // Marker source: one Point feature per estimate.
         val markerFeatures = JSONArray()
-        for (e in estimates) {
+        for (e in visible) {
             markerFeatures.put(JSONObject().apply {
                 put("type", "Feature")
                 put("geometry", JSONObject().apply {
@@ -157,8 +167,14 @@ object MapHelper {
         // Confidence circles only at zoomLevel >= 12 to avoid overlap soup.
         if (zoomLevel < ANTENNA_CIRCLE_MIN_ZOOM) return
 
+        // Only draw circles for confidently-located estimates, even when
+        // showLowConfidence is on — radii from one or two samples are
+        // misleading and create huge overlapping orange blobs.
+        val circleSource = visible.filter { !it.isLowConfidence }
+        if (circleSource.isEmpty()) return
+
         val circleFeatures = JSONArray()
-        for (e in estimates) {
+        for (e in circleSource) {
             val coords = circlePolygonCoordinates(e.location.lat, e.location.lng, e.radiusM.toDouble())
             circleFeatures.put(JSONObject().apply {
                 put("type", "Feature")

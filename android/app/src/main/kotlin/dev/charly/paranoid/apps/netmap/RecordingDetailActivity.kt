@@ -108,7 +108,9 @@ class RecordingDetailActivity : AppCompatActivity() {
                         map.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 64))
                     }
                     if (antennaToggleEnabled()) {
-                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                        MapHelper.drawAntennaLayer(
+                            map, estimates, map.cameraPosition.zoom, showLowConfidence()
+                        )
                     }
                 }
 
@@ -116,7 +118,9 @@ class RecordingDetailActivity : AppCompatActivity() {
                 // appear/disappear at zoom 12.
                 map.addOnCameraIdleListener {
                     if (antennaToggleEnabled()) {
-                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                        MapHelper.drawAntennaLayer(
+                            map, estimates, map.cameraPosition.zoom, showLowConfidence()
+                        )
                     }
                 }
 
@@ -150,11 +154,33 @@ class RecordingDetailActivity : AppCompatActivity() {
                 applyToggleVisuals()
                 mapView.getMapAsync { map ->
                     if (antennaToggleEnabled()) {
-                        MapHelper.drawAntennaLayer(map, estimates, map.cameraPosition.zoom)
+                        MapHelper.drawAntennaLayer(
+                            map, estimates, map.cameraPosition.zoom, showLowConfidence()
+                        )
                     } else {
                         MapHelper.drawAntennaLayer(map, emptyList(), map.cameraPosition.zoom)
                     }
                 }
+            }
+            // Long-press toggles low-confidence visibility (PARANOID-f0x rc.1
+            // smoke: PCI-only neighbor cells overwhelmed the map by default).
+            toggleBtn.setOnLongClickListener {
+                val newVal = !showLowConfidence()
+                setShowLowConfidence(newVal)
+                android.widget.Toast.makeText(
+                    this@RecordingDetailActivity,
+                    if (newVal) "Antennas: showing all (incl. low-confidence)"
+                    else "Antennas: high-confidence only",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                if (antennaToggleEnabled()) {
+                    mapView.getMapAsync { map ->
+                        MapHelper.drawAntennaLayer(
+                            map, estimates, map.cameraPosition.zoom, newVal
+                        )
+                    }
+                }
+                true
             }
 
             // Export button
@@ -172,9 +198,18 @@ class RecordingDetailActivity : AppCompatActivity() {
             .putBoolean(KEY_ANTENNA_DETAIL, enabled).apply()
     }
 
+    private fun showLowConfidence(): Boolean =
+        getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_ANTENNA_LOW_CONF, false)
+
+    private fun setShowLowConfidence(enabled: Boolean) {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+            .putBoolean(KEY_ANTENNA_LOW_CONF, enabled).apply()
+    }
+
     companion object {
         private const val PREFS = "netmap_prefs"
         private const val KEY_ANTENNA_DETAIL = "show_antennas_detail"
+        private const val KEY_ANTENNA_LOW_CONF = "show_antennas_low_conf_detail"
     }
 
     private fun showExportDialog(recording: RecordingEntity, measurements: List<MeasurementEntity>) {
