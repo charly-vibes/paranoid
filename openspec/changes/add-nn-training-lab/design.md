@@ -22,7 +22,7 @@ V1 SHALL use a tiny fixed-shape classifier or regressor model, or a tiny trainab
 If the trainable runtime/model/checkpoint path adds more than 50 MB to installed size, the proposal must be revised before implementation continues.
 
 ## Release visibility
-The lab is an experimental mini-app visible from the regular hub only if it is clearly labeled "Experimental" in the launcher and screen copy. Because this lab performs real training, implementation may choose a debug/internal build flag instead; that choice must be documented before tasks are marked complete.
+The lab is an experimental mini-app visible from the regular hub only if it is clearly labeled "Experimental" in the launcher and screen copy. Because this lab performs real training, implementation may choose a debug/internal build flag instead. The choice SHALL be recorded in code via a named build flag (for example `BuildConfig.DEBUG` or an explicitly named feature flag) so reviewers can verify reachability in release builds; UI ordering alone is not sufficient gating.
 
 ## Architecture
 
@@ -51,13 +51,19 @@ Runtime feasibility is a formal gate. If no supported Android runtime can cleanl
 ## Dataset readiness
 The implementation SHALL define task-specific readiness before enabling training: minimum valid example count, required label/class coverage if classification is used, maximum dataset size, supported input shape, and user-presentable reasons for rejected examples.
 
+Persisted datasets SHALL be tagged with the bundled model id/version (or input-shape and label-set hash) under which they were collected. On app start, examples whose schema does not match the current bundled model SHALL be excluded from training and surfaced to the user with explicit clear/export actions; silent reuse is prohibited.
+
 ## Checkpoint policy
 Checkpoints SHALL include model id, model version and/or model file hash, dataset summary, training run id, and commit status. Checkpoint writes SHALL be atomic: write a temporary artifact, validate it, then rename/commit it while preserving the previous checkpoint until the new one is valid. Incompatible checkpoints SHALL NOT be silently restored after a bundled model change.
 
 ## Resource policy
 Training SHALL require explicit user action. Before starting, the app checks battery and thermal conditions. During training, the app monitors cancellation, iteration bounds, and resource policy. Training results are not committed unless the run completes successfully and passes basic validation.
 
-Android thermal APIs are not uniformly available across API 26-35. When thermal status/headroom APIs are unavailable, the policy SHALL use conservative fallback constraints such as explicit user confirmation, battery threshold, charging state, short step limits, and visible copy that thermal telemetry is unavailable.
+Battery threshold: training SHALL be blocked when battery is below 40% and the device is not charging. This threshold applies both at start and during the run.
+
+Android thermal APIs are not uniformly available across API 26-35. When thermal status/headroom APIs are unavailable, the policy SHALL use conservative fallback constraints: battery at or above 40% or active charging, explicit user confirmation, short step limits, and visible copy that thermal telemetry is unavailable.
+
+V1 uses stop-only behavior: when battery or thermal policy becomes unsafe during a run, the run SHALL be cancelled and the previous checkpoint preserved. Pause/resume is out of scope for v1.
 
 ## Export and privacy policy
 Local datasets, predictions, checkpoints metadata, and metrics may contain sensitive user-provided data. Any export SHALL be user-initiated, disclose that sensitivity, and proceed only after confirmation.

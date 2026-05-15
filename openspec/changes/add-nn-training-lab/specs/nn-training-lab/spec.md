@@ -94,17 +94,24 @@ The system SHALL gate training with battery and thermal policy and SHALL stop or
 - **THEN** the system prevents the training run
 - **AND** the system explains why training is unavailable
 
+#### Scenario: Battery below threshold blocks training
+- **GIVEN** the device battery level is below 40% and the device is not charging
+- **WHEN** the user attempts to start training
+- **THEN** the system prevents the training run
+- **AND** the system explains the battery requirement
+
 #### Scenario: Thermal API unavailable
 - **GIVEN** the device or API level does not expose supported thermal telemetry
 - **WHEN** the user attempts to start training
-- **THEN** the system applies conservative fallback policy using battery level, charging state, explicit confirmation, and bounded step limits
+- **THEN** the system applies conservative fallback policy requiring battery level at or above 40% or active charging, explicit user confirmation, and bounded step limits
 - **AND** the system explains that thermal telemetry is unavailable
 
-#### Scenario: Unsafe state during training
+#### Scenario: Unsafe state during training cancels the run
 - **GIVEN** a training run is active
 - **WHEN** battery or thermal policy becomes unsafe
-- **THEN** the system stops or pauses training safely
-- **AND** the system does not commit a partial unsafe checkpoint unless the run meets the explicit commit rule
+- **THEN** the system stops the training run safely
+- **AND** the system does not commit any checkpoint from the cancelled run
+- **AND** the system rolls back to the previous known-good checkpoint
 
 ### Requirement: Training metrics and comparison
 The system SHALL record training metrics and show before/after behavior for each completed run.
@@ -136,3 +143,38 @@ The system SHALL store datasets and metrics locally, keep them user-clearable, a
 - **THEN** the system explains that the export may contain local examples, predictions, checkpoint metadata, or metrics
 - **AND** the system only creates the export after explicit user confirmation
 - **AND** the export is user-initiated through Android sharing
+
+#### Scenario: Incompatible dataset schema after model update
+- **GIVEN** persisted training examples were stored against a previous bundled model input shape or label set
+- **WHEN** the app starts with a bundled model whose input shape or label set differs
+- **THEN** the system does not silently use the incompatible examples for training
+- **AND** the system surfaces the incompatibility with a user-presentable explanation and offers explicit clear or export actions
+
+### Requirement: Lab visibility decision is recorded
+The system SHALL gate the NN Training Lab behind an explicit, code-level visibility decision so reviewers can verify whether the lab is reachable in release builds.
+
+#### Scenario: Release build with experimental labeling
+- **GIVEN** the visibility decision is "release-visible"
+- **WHEN** the launcher is rendered in a release build
+- **THEN** the lab entry is reachable
+- **AND** the launcher entry and the lab's first screen are labeled "Experimental"
+
+#### Scenario: Debug-only build flag
+- **GIVEN** the visibility decision is "debug/internal only"
+- **WHEN** the launcher is rendered in a release build
+- **THEN** the lab entry is not reachable
+- **AND** the gating is enforced by a documented build flag (such as `BuildConfig.DEBUG` or an equivalent named flag) rather than by UI ordering alone
+
+### Requirement: Isolation from NN Adapt Lab
+The system SHALL keep the NN Training Lab module independent from the NN Adapt Lab module in v1.
+
+#### Scenario: No build dependency on adapt lab
+- **GIVEN** the training lab module/package is built
+- **WHEN** its declared dependencies are inspected
+- **THEN** it does not depend on the NN Adapt Lab module/package
+- **AND** an automated check (Gradle dependency assertion, module-graph test, or equivalent) enforces this boundary
+
+#### Scenario: No network APIs in training path
+- **GIVEN** the training lab implementation is built
+- **WHEN** its declared dependencies and used Android permissions are inspected
+- **THEN** the training code path does not require Internet, network, or remote-inference APIs

@@ -57,12 +57,12 @@
 
 - [ ] 5.1 **Red:** write a failing unit test for denying training when policy inputs indicate severe thermal status.
 - [ ] 5.2 **Green:** implement the smallest `ThermalTrainingPolicy`.
-- [ ] 5.3 **Red:** write a failing unit test for denying or warning on low battery according to the agreed threshold.
-- [ ] 5.4 **Green:** implement battery gating.
+- [ ] 5.3 **Red:** write a failing unit test for denying training when battery is below 40% and the device is not charging.
+- [ ] 5.4 **Green:** implement battery gating at the 40%/charging threshold.
 - [ ] 5.5 **Red:** write a failing unit test for fallback behavior when thermal telemetry is unavailable on older/simpler devices.
-- [ ] 5.6 **Green:** implement conservative fallback policy using battery level, charging state, explicit confirmation, and bounded step limits.
-- [ ] 5.7 **Red:** write a failing test for pausing/cancelling when status becomes unsafe during training.
-- [ ] 5.8 **Green:** integrate policy with `TrainingRunController`.
+- [ ] 5.6 **Green:** implement conservative fallback policy requiring battery at or above 40% or active charging, explicit confirmation, and bounded step limits.
+- [ ] 5.7 **Red:** write a failing test for cancelling the run when status becomes unsafe during training and rolling back to the previous checkpoint (stop-only; no pause/resume in v1).
+- [ ] 5.8 **Green:** integrate policy with `TrainingRunController` using stop-only behavior.
 - [ ] 5.9 **Manual:** verify policy copy and behavior on a real device where possible.
 
 ## 6. Ticket: Persist datasets and metrics
@@ -76,7 +76,9 @@
 - [ ] 6.6 **Green:** implement clear/reset actions for local data.
 - [ ] 6.7 **Red:** write a failing export test requiring sensitive-data confirmation for datasets/metrics.
 - [ ] 6.8 **Green:** implement local export disclosure and Android sharing patterns.
-- [ ] 6.9 **Refactor:** remove duplicate mapping with checkpoint metadata if it appears.
+- [ ] 6.9 **Red:** write a failing test for excluding persisted examples whose schema (input shape or label set) does not match the current bundled model and surfacing a user-presentable explanation with clear/export actions.
+- [ ] 6.10 **Green:** tag persisted examples with bundled model id/version (or input-shape and label-set hash) and implement the schema-mismatch flow.
+- [ ] 6.11 **Refactor:** remove duplicate mapping with checkpoint metadata if it appears.
 
 ## 7. Ticket: Build minimal Android Views UI
 **Goal:** expose training lab as a clearly experimental mini-app.
@@ -89,12 +91,14 @@
 - [ ] 7.6 **Green:** render progress, metrics, checkpoint state, rollback, and reset.
 - [ ] 7.7 **Refactor:** simplify UI state model and wording.
 
-## 8. Ticket: Validate isolation and comparison
-**Goal:** make sure the training lab stays separate from the adaptation lab while enabling comparison.
+## 8. Ticket: Validate isolation, visibility, and comparison
+**Goal:** make sure the training lab stays separate from the adaptation lab, has its visibility recorded in code, and enables comparison.
 
-- [ ] 8.1 Verify the training lab does not reuse adaptive-layer implementation details.
-- [ ] 8.2 Verify both labs can report comparable baseline/trained/adapted metrics where their example contracts overlap.
-- [ ] 8.3 Add tests or static checks proving training does not require network APIs.
-- [ ] 8.4 Run unit tests and relevant instrumentation tests.
-- [ ] 8.5 Manually verify offline operation, cancellation, reset, and rollback.
-- [ ] 8.6 Record installed-size impact, representative training duration, inference latency, and policy observations.
+- [ ] 8.1 Add an automated check (Gradle dependency assertion, module-graph test, or equivalent) that fails the build if the training lab module/package depends on the NN Adapt Lab module/package.
+- [ ] 8.2 Add an automated check (dependency or manifest-permission assertion) that fails the build if the training code path pulls in Internet, network, or remote-inference APIs.
+- [ ] 8.3 Record the visibility decision in code via a named build flag (e.g. `BuildConfig.DEBUG` or an explicitly named feature flag), and add a test asserting the launcher entry's reachability matches that flag in release builds.
+- [ ] 8.4 If the visibility decision is "release-visible", add a test asserting the launcher entry and the lab's first screen carry "Experimental" labeling.
+- [ ] 8.5 Verify both labs can report comparable baseline/trained/adapted metrics where their example contracts overlap.
+- [ ] 8.6 Run unit tests and relevant instrumentation tests.
+- [ ] 8.7 Manually verify offline operation, cancellation, reset, and rollback.
+- [ ] 8.8 Record installed-size impact, representative training duration, inference latency, and policy observations.
