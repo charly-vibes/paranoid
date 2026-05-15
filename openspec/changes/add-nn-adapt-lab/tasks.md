@@ -10,9 +10,11 @@
 - [ ] 1.4 Define adaptive reset, separate metric clearing, sensitive export confirmation, and model-version/hash compatibility behavior.
 - [ ] 1.5 Decide whether the lab is release-visible with Experimental labeling or debug/internal only.
 - [ ] 1.6 Define installed-size budget verification for the model/runtime.
+- [ ] 1.7 Pin the LiteRT artifact coordinate and version (e.g. `com.google.ai.edge.litert:litert:<x.y.z>`) and the selective-ops/builtin-ops configuration matching the chosen v1 model.
+- [ ] 1.8 Confirm Room is the persistence mechanism for examples, adaptive parameters, and metrics; note any DTO/domain split needed to keep the adaptive layer Android-free.
 
 **Acceptance criteria:**
-- [ ] 1.7 The v1 model, input/output contract, metric names, visibility choice, size impact, and compatibility policy are documented in the mini-app spec/functionality note or implementation notes.
+- [ ] 1.9 The v1 model, input/output contract, metric names, visibility choice, size impact, compatibility policy, pinned LiteRT artifact + ops config, and Room persistence choice are documented in the mini-app spec/functionality note or implementation notes.
 
 ## 2. Ticket: Build pure domain adaptation logic
 **Goal:** implement the adaptive layer without Android dependencies.
@@ -41,7 +43,7 @@
 **Goal:** keep exploration data local and resettable.
 
 - [ ] 4.1 **Red:** write a failing persistence test for storing and reading local examples.
-- [ ] 4.2 **Green:** implement the smallest Room or file-backed store.
+- [ ] 4.2 **Green:** implement the smallest Room-backed store (reuse existing Room dependency; no parallel storage mechanism).
 - [ ] 4.3 **Red:** write a failing test for storing and restoring adaptive parameters with model id/version/hash metadata.
 - [ ] 4.4 **Green:** implement adaptive parameter persistence and compatibility filtering.
 - [ ] 4.5 **Red:** write a failing test for recording run metrics with model metadata.

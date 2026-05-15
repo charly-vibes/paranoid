@@ -50,7 +50,13 @@ The adaptive layer SHALL expose deterministic inputs and outputs so unit tests c
 Adaptive parameters, examples, and metrics SHALL record the model id, model version, and/or model file hash used to produce them. When the bundled model changes, incompatible adaptive parameters SHALL NOT be silently reused; the app SHALL ignore, migrate, or reset incompatible state and explain the choice to the user.
 
 ## Model packaging
-The v1 exploration should use a small INT8 `.tflite` model bundled in app assets. If the model becomes too large or requires runtime downloads, the proposal should be revised before implementation.
+The v1 exploration SHALL use a small INT8 `.tflite` model bundled in app assets. If the model becomes too large or requires runtime downloads, the proposal SHALL be revised before implementation.
+
+## Runtime dependency pin
+V1 SHALL pin the LiteRT runtime to `com.google.ai.edge.litert:litert:1.0.1` (or the latest stable equivalent at implementation time) and use the selective-ops/builtin-ops configuration that covers only the operators required by the chosen v1 model. The chosen artifact, version, and ops configuration SHALL be recorded in implementation notes alongside the measured installed-size delta per ABI split, and the proposal SHALL be revised before continuing if the delta exceeds the 25 MB guardrail on any shipped ABI.
+
+## Persistence choice
+V1 SHALL use Room for local persistence of examples, adaptive parameters, and metrics, reusing the project's existing Room dependency to avoid adding a parallel storage mechanism. Persistence DTOs SHALL stay separate from pure-Kotlin domain models so the adaptive layer remains testable without Android dependencies.
 
 ## Resource policy
 Inference is user-triggered or bounded by an explicit experiment run. Continuous background inference is out of scope. The app records latency and avoids thermal-heavy training work; a simple rate limit is sufficient for v1 unless the selected experiment requires repeated inference.

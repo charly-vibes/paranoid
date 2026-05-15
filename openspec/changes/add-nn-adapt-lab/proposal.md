@@ -14,5 +14,6 @@ We want a low-risk exploration path for on-device neural-network features that p
 ## Impact
 - Affected specs: `nn-adapt-lab`
 - Affected code: new mini-app under `android/app/src/main/kotlin/dev/charly/paranoid/apps/nnadapt/`, launcher registry entry, manifest entry, layouts/resources, local assets/model packaging, local persistence for examples/adaptive parameters
-- New dependency likely: LiteRT runtime for inference
-- Size guardrail: revise the proposal if the model/runtime adds more than 25 MB to installed size
+- New dependency: LiteRT runtime for inference, pinned to `com.google.ai.edge.litert:litert:<x.y.z>` with selective-ops/builtin-ops configuration matching the chosen v1 model (exact version locked in ticket 1)
+- Persistence: reuse the existing Room dependency for examples, adaptive parameters, and metrics — no parallel storage mechanism
+- Size guardrail: revise the proposal if the model/runtime adds more than 25 MB to installed size on any shipped ABI split
