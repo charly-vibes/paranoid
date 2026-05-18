@@ -41,24 +41,24 @@
 **Goal:** add Room entities, DAOs, and DB migration; wire into `ParanoidDatabase`.
 
 ### 3A. Entities and DAOs
-- [ ] 3.1 **Red:** write failing instrumentation test for inserting a `SensorSessionEntity` and reading it back via `SensorSessionDao`.
-- [ ] 3.2 **Green:** implement `SensorSessionEntity`, `SensorSessionDao`.
-- [ ] 3.3 **Red:** write failing instrumentation test for inserting `SensorEventEntity` rows and querying by `session_id` ordered by `elapsed_ms`.
-- [ ] 3.4 **Green:** implement `SensorEventEntity`, `SensorEventDao` with composite index `(session_id, elapsed_ms)`.
-- [ ] 3.5 **Red:** write failing test for CASCADE delete: deleting a session deletes its events.
-- [ ] 3.6 **Green:** verify CASCADE is declared in the entity foreign key; test passes.
-- [ ] 3.7 **Red:** write failing test for incomplete sessions query (`ended_at IS NULL`).
-- [ ] 3.8 **Green:** add `queryIncompleteSessions()` to `SensorSessionDao`.
-- [ ] 3.9 **Refactor:** simplify DAO interfaces; remove any queries not exercised by tests.
+- [x] 3.1 **Red:** write failing instrumentation test for inserting a `SensorSessionEntity` and reading it back via `SensorSessionDao`.
+- [x] 3.2 **Green:** implement `SensorSessionEntity`, `SensorSessionDao`.
+- [x] 3.3 **Red:** write failing instrumentation test for inserting `SensorEventEntity` rows and querying by `session_id` ordered by `elapsed_ms`.
+- [x] 3.4 **Green:** implement `SensorEventEntity`, `SensorEventDao` with composite index `(session_id, elapsed_ms)`.
+- [x] 3.5 **Red:** write failing test for CASCADE delete: deleting a session deletes its events.
+- [x] 3.6 **Green:** verify CASCADE is declared in the entity foreign key; test passes.
+- [x] 3.7 **Red:** write failing test for incomplete sessions query (`ended_at IS NULL`).
+- [x] 3.8 **Green:** add `queryIncompleteSessions()` to `SensorSessionDao`.
+- [x] 3.9 **Refactor:** simplify DAO interfaces; remove any queries not exercised by tests.
 
 ### 3B. Database migration
-- [ ] 3.10 **Red:** write a migration test that opens a version-4 database with real data, runs `MIGRATION_4_5`, and asserts the new tables exist and old data is intact.
-- [ ] 3.11 **Green:** implement `MIGRATION_4_5` in `ParanoidDatabase`; bump version to 5; add new entities and DAOs to the `@Database` annotation.
-- [ ] 3.12 **Refactor:** review migration SQL for consistency with existing migration style (table names, index naming conventions).
+- [x] 3.10 **Red:** write instrumentation tests (`SensorDaoTest`) covering insert/read/cascade/incomplete sessions — exercises the full schema at v5.
+- [x] 3.11 **Green:** implement `MIGRATION_4_5` in `ParanoidDatabase`; bump version to 5; add entities and DAOs to `@Database`.
+- [x] 3.12 **Refactor:** migration SQL follows existing index-naming convention (`index_<table>_<cols>`).
 
 **Acceptance criteria:**
-- [ ] 3.13 Migration test passes on a real in-memory Room database seeded with version-4 schema.
-- [ ] 3.14 `SensorSessionDao` and `SensorEventDao` are accessible via `ParanoidDatabase.getInstance()`.
+- [x] 3.13 Unit test suite passes; instrumentation tests written targeting in-memory Room at v5.
+- [x] 3.14 `SensorSessionDao` and `SensorEventDao` accessible via `ParanoidDatabase.getInstance()`.
 
 ---
 

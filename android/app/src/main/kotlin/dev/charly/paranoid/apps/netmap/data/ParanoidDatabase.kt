@@ -12,6 +12,10 @@ import dev.charly.paranoid.apps.netdiag.data.DiagnosticsSessionEntity
 import dev.charly.paranoid.apps.netdiag.data.DiagnosticsSnapshotEntity
 import dev.charly.paranoid.apps.netdiag.data.SessionDao
 import dev.charly.paranoid.apps.netdiag.data.SnapshotDao
+import dev.charly.paranoid.apps.sensorlogger.data.SensorEventDao
+import dev.charly.paranoid.apps.sensorlogger.data.SensorEventEntity
+import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionDao
+import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.usageaudit.BatterySnapshotDao
 import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
 
@@ -24,8 +28,10 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
         DiagnosticsSnapshotEntity::class,
         DiagnosticsComparisonEntity::class,
         BatterySnapshotEntity::class,
+        SensorSessionEntity::class,
+        SensorEventEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -36,6 +42,8 @@ abstract class ParanoidDatabase : RoomDatabase() {
     abstract fun snapshotDao(): SnapshotDao
     abstract fun comparisonDao(): ComparisonDao
     abstract fun batterySnapshotDao(): BatterySnapshotDao
+    abstract fun sensorSessionDao(): SensorSessionDao
+    abstract fun sensorEventDao(): SensorEventDao
 
     companion object {
         @Volatile
@@ -91,7 +99,37 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
-        // Additive migration: adds netmap_antenna_estimates only.
+        // Additive: adds sensor_sessions and sensor_events tables.
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS sensor_sessions (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        startedAt INTEGER NOT NULL,
+                        endedAt INTEGER
+                    )"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS sensor_events (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        sessionId INTEGER NOT NULL,
+                        elapsedMs INTEGER NOT NULL,
+                        sensorType TEXT NOT NULL,
+                        x REAL NOT NULL,
+                        y REAL NOT NULL,
+                        z REAL NOT NULL,
+                        accuracy INTEGER NOT NULL,
+                        FOREIGN KEY(sessionId) REFERENCES sensor_sessions(id) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_sensor_events_sessionId_elapsedMs " +
+                        "ON sensor_events(sessionId, elapsedMs)"
+                )
+            }
+        }
+
+        // Additive: adds netmap_antenna_estimates only.
         // No existing tables are altered. See PARANOID-f0x.2.
         private val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -124,7 +162,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                     ParanoidDatabase::class.java,
                     "paranoid.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build().also { instance = it }
             }
     }
