@@ -65,21 +65,21 @@
 ## 4. Ticket: SensorRecordingService
 **Goal:** implement the foreground service with sensor registration, FIFO batching, in-memory buffer, periodic flush, and flush-on-stop.
 
-- [ ] 4.1 **Red:** write a unit test for the in-memory buffer: append events, flush returns all events and clears the buffer.
-- [ ] 4.2 **Green:** implement `SensorEventBuffer` (pure class, no Android deps).
-- [ ] 4.3 **Red:** write a unit test for flush-suppression when buffer is empty (no-op, no DB call).
-- [ ] 4.4 **Green:** add empty-buffer guard to flush logic.
-- [ ] 4.5 Implement `SensorRecordingService`: foreground service, `foregroundServiceType="dataSync"`, notification ID 1002.
-- [ ] 4.6 Implement `registerAllSensors()`: iterate sensor list, skip absent sensors, register with `SENSOR_DELAY_NORMAL` + `maxReportLatencyUs = 5_000_000L`.
-- [ ] 4.7 Implement `onSensorChanged()`: append to in-memory buffer only (no blocking I/O on callback thread).
-- [ ] 4.8 Implement 30-second flush coroutine on `Dispatchers.IO`.
-- [ ] 4.9 Implement `stopRecording()`: wake lock → `unregisterListener()` → await final callbacks via `CompletableDeferred` that resolves on first empty-batch signal from `onSensorChanged` or after 500 ms timeout (whichever comes first) → bulk insert → `ended_at` in a single `@Transaction` → release wake lock.
-- [ ] 4.10 Implement `onDestroy()` safety call: `sensorManager.unregisterListener(this)`.
-- [ ] 4.11 Implement `Binder` interface for Activity → Service communication (elapsed time, event count, registered sensor list).
-- [ ] 4.12 **Refactor:** separate recording orchestration from Android service lifecycle boilerplate; verify no blocking calls on sensor callback thread.
+- [x] 4.1 **Red:** write a unit test for the in-memory buffer: append events, flush returns all events and clears the buffer.
+- [x] 4.2 **Green:** implement `SensorEventBuffer` (pure class, no Android deps).
+- [x] 4.3 **Red:** write a unit test for flush-suppression when buffer is empty (no-op, no DB call).
+- [x] 4.4 **Green:** add empty-buffer guard to flush logic.
+- [x] 4.5 Implement `SensorRecordingService`: foreground service, `foregroundServiceType="dataSync"`, notification ID 1002.
+- [x] 4.6 Implement `registerAllSensors()`: iterate sensor list, skip absent sensors, register with `SENSOR_DELAY_NORMAL` + `maxReportLatencyUs = 5_000_000`.
+- [x] 4.7 Implement `onSensorChanged()`: append to in-memory buffer only (no blocking I/O on callback thread).
+- [x] 4.8 Implement 30-second flush coroutine on `Dispatchers.IO`.
+- [x] 4.9 Implement `stopRecording()`: wake lock → `SensorManager.flush()` → await `onFlushCompleted` via `CompletableDeferred` (counts down per sensor) or 500 ms timeout → `unregisterListener()` → bulk insert → `ended_at` → release wake lock.
+- [x] 4.10 Implement `onDestroy()` safety call: `sensorManager.unregisterListener(this)`.
+- [x] 4.11 Implement `Binder` interface for Activity → Service (isRecording, eventCount, registeredSensors, sessionStartElapsedMs).
+- [x] 4.12 **Refactor:** `SensorEventListener2` used for `onFlushCompleted`; no blocking I/O on callback thread.
 
 **Acceptance criteria:**
-- [ ] 4.13 `SensorEventBuffer` unit tests pass.
+- [x] 4.13 `SensorEventBuffer` unit tests pass.
 - [ ] 4.14 Manual smoke test: service runs in foreground, notification appears, sensors register, periodic flush writes to DB.
 
 ---
