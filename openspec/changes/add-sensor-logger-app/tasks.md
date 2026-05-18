@@ -4,14 +4,14 @@
 ## 1. Ticket: Lock implementation assumptions
 **Goal:** confirm remaining product boundaries before writing code.
 
-- [ ] 1.1 Verify the canonical sensor list for v1 (motion + orientation + environment as specified; no heart-rate or step-counter).
-- [ ] 1.2 Verify v1 UI scope: recording control, session list, and session detail only — no chart/graph view of raw event data.
-- [ ] 1.3 Verify `SensorRecordingService` notification ID: grep `RecordingService` for notification ID 1001; confirm sensor logger uses 1002 (decision already in `design.md` §Decision 7).
-- [ ] 1.4 Verify `ParanoidDatabase` current version: grep for `version =` in `ParanoidDatabase.kt`; confirm it is 4 so migration 4→5 is correct (decision already in `design.md` §Decision 1).
-- [ ] 1.5 Verify combined-recording detection: grep for `RecordingService.isRunning` in codebase; confirm the static flag exists (detection strategy pinned in `design.md` §Decision 8).
+- [x] 1.1 Verify the canonical sensor list for v1 (motion + orientation + environment as specified; no heart-rate or step-counter).
+- [x] 1.2 Verify v1 UI scope: recording control, session list, and session detail only — no chart/graph view of raw event data.
+- [x] 1.3 Verify `SensorRecordingService` notification ID: `RecordingService.NOTIFICATION_ID = 1001` confirmed at `RecordingService.kt:299`; sensor logger uses 1002.
+- [x] 1.4 Verify `ParanoidDatabase` current version: `version = 4` confirmed at `ParanoidDatabase.kt:28`; migration 4→5 is correct.
+- [x] 1.5 Verify combined-recording detection: `RecordingService.isRunning` static flag **does not exist**. Actual pattern is instance-level `isRecording: StateFlow<Boolean>` via bound `LocalBinder` (same as `NetMapActivity`). `design.md` §Decision 8 updated to reflect the real pattern.
 
 **Acceptance criteria:**
-- [ ] 1.6 All five verification steps are confirmed with codebase evidence; any discrepancy is resolved before Ticket 2 begins.
+- [x] 1.6 All five verification steps are confirmed with codebase evidence; discrepancy in Decision 8 resolved — design updated before Ticket 2.
 
 ---
 
@@ -19,21 +19,21 @@
 **Goal:** define the value objects and pure calculation functions; no Android dependencies, fully unit-testable.
 
 ### 2A. Domain model
-- [ ] 2.1 **Red:** write failing unit tests for `SensorSession` value object (start/end times, duration calculation, `isIncomplete` flag).
-- [ ] 2.2 **Green:** implement `SensorSession` to pass the tests.
-- [ ] 2.3 **Red:** write failing unit test for `SensorEvent` value object (elapsed_ms, sensor type, x/y/z/accuracy).
-- [ ] 2.4 **Green:** implement `SensorEvent` to pass the test.
-- [ ] 2.5 **Refactor:** tidy naming, sealed types for sensor category (Motion, Orientation, Environment).
+- [x] 2.1 **Red:** write failing unit tests for `SensorSession` value object (start/end times, duration calculation, `isIncomplete` flag).
+- [x] 2.2 **Green:** implement `SensorSession` to pass the tests.
+- [x] 2.3 **Red:** write failing unit test for `SensorEvent` value object (elapsed_ms, sensor type, x/y/z/accuracy).
+- [x] 2.4 **Green:** implement `SensorEvent` to pass the test.
+- [x] 2.5 **Refactor:** tidy naming, sealed types for sensor category (Motion, Orientation, Environment).
 
 ### 2B. Session summary logic
-- [ ] 2.6 **Red:** write failing unit test for event-count-per-sensor aggregation (given a list of `SensorEvent`, return a `Map<SensorType, Int>`).
-- [ ] 2.7 **Green:** implement the smallest aggregation function to pass the test.
-- [ ] 2.8 **Red:** write failing unit test for session duration from `started_at` and `ended_at` (handles null ended_at).
-- [ ] 2.9 **Green:** implement duration helper.
-- [ ] 2.10 **Refactor:** consolidate summary types; ensure no Android imports leak into pure logic.
+- [x] 2.6 **Red:** write failing unit test for event-count-per-sensor aggregation (given a list of `SensorEvent`, return a `Map<SensorType, Int>`).
+- [x] 2.7 **Green:** implement the smallest aggregation function to pass the test.
+- [x] 2.8 **Red:** write failing unit test for session duration from `started_at` and `ended_at` (handles null ended_at).
+- [x] 2.9 **Green:** implement duration helper.
+- [x] 2.10 **Refactor:** consolidate summary types; ensure no Android imports leak into pure logic.
 
 **Acceptance criteria:**
-- [ ] 2.11 All domain model tests pass with zero Android dependencies.
+- [x] 2.11 All domain model tests pass with zero Android dependencies.
 
 ---
 

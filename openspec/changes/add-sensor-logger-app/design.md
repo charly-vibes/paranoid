@@ -84,9 +84,9 @@ Both `SensorRecordingService` and `RecordingService` (NetMap) can run simultaneo
 ## Decision 8 — Combined-recording detection strategy
 
 **Options:**
-- A) Read `RecordingService.isRunning` companion object flag (in-process, synchronous, no API deprecation risk).
+- A) Bind to `RecordingService` and read its `isRecording: StateFlow<Boolean>` (the actual in-process pattern used by `NetMapActivity`).
 - B) Query `ActivityManager.getRunningServices()` (cross-process but deprecated in API 26+; unreliable for foreground services after Android O).
 
-**Decision: A — `RecordingService.isRunning` companion flag.**
+**Decision: A — bind to `RecordingService`, read `isRecording.value`.**
 
-Option B is deprecated and returns unreliable results on Android 8+. Option A is the same approach used within the Paranoid process boundary and requires no IPC. `SensorLoggerActivity` reads the flag on `onResume()` and on service bind callback to decide whether to show the combined-recording notice.
+Option B is deprecated and returns unreliable results on Android 8+. `RecordingService` does not expose a static companion flag; the real pattern is an instance-level `StateFlow<Boolean>` accessed via a bound `LocalBinder` (same pattern as `NetMapActivity`). `SensorLoggerActivity` binds to `RecordingService` with `BIND_AUTO_CREATE` in `onResume()` and collects `isRecording` to decide whether to show the combined-recording notice. It unbinds in `onPause()`. If `RecordingService` is not running, `onServiceConnected` is never called and the notice remains hidden.
