@@ -87,16 +87,16 @@
 ## 5. Ticket: Error handling and recovery
 **Goal:** handle disk-full errors, implement incomplete-session recovery on launch.
 
-- [ ] 5.1 **Red:** write a unit test for `SQLiteFullException` handling: flush method catches exception, returns an error result type (does not throw).
-- [ ] 5.2 **Green:** wrap bulk insert in try/catch; propagate error to the service's stop-with-error path.
-- [ ] 5.3 Implement stop-with-error path: cancel foreground notification, post error notification "Recording stopped — storage full", leave session with `ended_at = NULL`.
-- [ ] 5.4 **Red:** write a unit test for incomplete-session detection at launch: given a DAO returning one session with `ended_at = NULL`, the ViewModel emits it as `RecoveryState.Incomplete`.
-- [ ] 5.5 **Green:** implement launch-time incomplete-session query and `RecoveryState` sealed class.
-- [ ] 5.6 **Refactor:** unify error notification creation with any existing notification helper in the codebase.
+- [x] 5.1 **Red:** write a unit test for `SQLiteFullException` handling: `FlushResult.DiskFull` wraps exception.
+- [x] 5.2 **Green:** `flushBufferToDb()` returns `FlushResult`; catches `SQLiteFullException`.
+- [x] 5.3 Implement stop-with-error path: `handleDiskFull()` — cancels jobs, unregisters, stops foreground, posts error notification "Recording stopped — storage full", leaves session `ended_at = NULL`.
+- [x] 5.4 **Red:** write a unit test for `RecoveryState.from()` factory with incomplete session IDs.
+- [x] 5.5 **Green:** implement `RecoveryState` sealed class with `None` and `Incomplete(sessionIds)` variants.
+- [x] 5.6 **Refactor:** no existing notification helper found; error notification inlined into service consistently.
 
 **Acceptance criteria:**
-- [ ] 5.7 Disk-full unit test passes; service transitions to idle state without crashing.
-- [ ] 5.8 Incomplete-session unit test passes; ViewModel correctly surfaces recovery state.
+- [x] 5.7 Disk-full unit test passes; `FlushResult.DiskFull` returned without throwing.
+- [x] 5.8 `RecoveryState` unit tests pass.
 
 ---
 

@@ -15,6 +15,7 @@ import android.os.Binder
 import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
+import android.database.sqlite.SQLiteFullException
 import androidx.core.app.NotificationCompat
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
@@ -115,7 +116,9 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         periodicFlushJob = scope.launch(Dispatchers.IO) {
             while (true) {
                 delay(FLUSH_INTERVAL_MS)
-                flushBufferToDb()
+                if (flushBufferToDb() is FlushResult.DiskFull) {
+                    handleDiskFull()
+                }
             }
         }
     }
@@ -174,10 +177,15 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             }
             sensorManager.unregisterListener(this)
 
-            flushBufferToDb()
-
-            val current = db.sensorSessionDao().getById(sessionId) ?: return
-            db.sensorSessionDao().update(current.copy(endedAt = System.currentTimeMillis()))
+            when (flushBufferToDb()) {
+                is FlushResult.Success -> {
+                    val current = db.sensorSessionDao().getById(sessionId) ?: return
+                    db.sensorSessionDao().update(current.copy(endedAt = System.currentTimeMillis()))
+                }
+                is FlushResult.DiskFull -> {
+                    postErrorNotification()
+                }
+            }
         } finally {
             if (wakeLock.isHeld) wakeLock.release()
             _registeredSensors.clear()
@@ -187,10 +195,37 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         }
     }
 
-    private suspend fun flushBufferToDb() {
+    private suspend fun flushBufferToDb(): FlushResult {
         val batch = buffer.flush()
-        if (batch.isEmpty()) return
-        db.sensorEventDao().insertBatch(batch.map { it.toEntity() })
+        if (batch.isEmpty()) return FlushResult.Success
+        return try {
+            db.sensorEventDao().insertBatch(batch.map { it.toEntity() })
+            FlushResult.Success
+        } catch (e: SQLiteFullException) {
+            FlushResult.DiskFull(e)
+        }
+    }
+
+    private fun handleDiskFull() {
+        notificationJob?.cancel()
+        periodicFlushJob?.cancel()
+        _isRecording.value = false
+        sensorManager.unregisterListener(this)
+        _registeredSensors.clear()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        postErrorNotification()
+        stopSelf()
+    }
+
+    private fun postErrorNotification() {
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("Recording stopped — storage full")
+            .setContentText("Free up space to record again.")
+            .setAutoCancel(true)
+            .build()
+        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+            .notify(ERROR_NOTIFICATION_ID, notification)
     }
 
     override fun onDestroy() {
@@ -248,6 +283,7 @@ class SensorRecordingService : Service(), SensorEventListener2 {
     companion object {
         const val CHANNEL_ID = "sensor_recording"
         const val NOTIFICATION_ID = 1002
+        const val ERROR_NOTIFICATION_ID = 1003
         const val ACTION_START = "dev.charly.paranoid.SENSOR_START"
         const val ACTION_STOP = "dev.charly.paranoid.SENSOR_STOP"
         const val BATCH_LATENCY_US = 5_000_000
