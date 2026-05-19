@@ -2,6 +2,28 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.9.0] — 2026-05-19
+
+### Sensor Logger — new mini-app
+
+- New **Sensor Logger** mini-app that records motion, orientation, and environment sensors (accelerometer, gyroscope, linear acceleration, gravity, rotation vector, magnetometer, pressure, light, proximity) to a local SQLite database via Room
+- Foreground service (`SensorRecordingService`, `foregroundServiceType=dataSync`) batches events at `SENSOR_DELAY_NORMAL` with a 5 s hardware max-report latency, flushes to disk every 30 s, and performs a hardware `flush()`-plus-wake-lock sequence on stop so no in-memory events are lost
+- Three Activities: control screen (Start/Stop, live elapsed time, in-flight event count, combined-recording notice when NetMap is also recording), session list (reverse-chronological with an "Incomplete" badge for sessions whose recording was interrupted), and session detail (start/end/duration, total events, per-sensor breakdown, plus Mark-as-closed / Delete actions for incomplete sessions)
+- Disk-full handling: `SQLiteFullException` during flush is caught, the service stops cleanly, and an error notification ("Recording stopped — storage full") is posted
+- Incomplete-session recovery: sessions left with `ended_at IS NULL` (process killed mid-recording) are detected on launch via a `RecoveryState` sealed class and surfaced in the UI for manual resolution
+
+### Privacy invariant
+
+- All sensor data stays **fully on-device** — no network upload, no telemetry. Recordings are stored in the local Room database under the app's private data directory
+
+### Internal
+
+- New Room tables `sensor_sessions` and `sensor_events` with a composite `(session_id, elapsed_ms)` index and `ON DELETE CASCADE`; additive DB migration v4→v5
+- `SensorRecordingService` exposes `isRecording: StateFlow<Boolean>` via a `LocalBinder` (same pattern as NetMap's `RecordingService`), enabling the Activity to drive its UI from a single source of truth and detect cross-app combined-recording state
+- Pure-Kotlin helpers in `sensorlogger.model` (`countEventsBySensor`, `aggregateSensorCounts`, `prettySensorName`) are fully unit-tested with zero Android deps
+- Activity layer carries no business logic — DB access and state aggregation live in `SensorLoggerViewModel`, `SensorSessionsViewModel`, and `SensorSessionDetailViewModel`
+- Idle-state summary on the control screen is driven by a continuously-collected `observeAll()` Flow, so the "Last: …" summary refreshes automatically when the service commits `ended_at` after a stop (no race window with the prior session)
+
 ## [v0.8.0] — 2026-05-12
 
 ### NetMap — Approximate Antenna Locations
