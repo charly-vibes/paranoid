@@ -46,7 +46,8 @@ class SensorRecordingService : Service(), SensorEventListener2 {
     private val buffer = SensorEventBuffer()
 
     private var sessionId: Long = -1L
-    private var sessionStartElapsedMs: Long = 0L
+    var sessionStartElapsedMs: Long = 0L
+        private set
     private var totalEventCount = 0
     private val _registeredSensors = mutableListOf<SensorType>()
     val registeredSensors: List<SensorType> get() = _registeredSensors.toList()

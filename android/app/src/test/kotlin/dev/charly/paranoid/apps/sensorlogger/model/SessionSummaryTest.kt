@@ -49,4 +49,36 @@ class SessionSummaryTest {
         val session = SensorSession(startedAt = 1_000L, endedAt = null)
         assertNull(session.durationMs)
     }
+
+    @Test
+    fun `aggregateSensorCounts maps known type names to enum keys`() {
+        val rows = listOf("ACCELEROMETER" to 5, "GYROSCOPE" to 3)
+        val result = aggregateSensorCounts(rows)
+        assertEquals(5, result[SensorType.ACCELEROMETER])
+        assertEquals(3, result[SensorType.GYROSCOPE])
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `aggregateSensorCounts skips unknown type names`() {
+        val rows = listOf("ACCELEROMETER" to 5, "FUTURE_SENSOR" to 99)
+        val result = aggregateSensorCounts(rows)
+        assertEquals(mapOf(SensorType.ACCELEROMETER to 5), result)
+    }
+
+    @Test
+    fun `aggregateSensorCounts on empty input returns empty map`() {
+        assertEquals(emptyMap<SensorType, Int>(), aggregateSensorCounts(emptyList()))
+    }
+
+    @Test
+    fun `prettySensorName capitalises single-word type`() {
+        assertEquals("Accelerometer", prettySensorName(SensorType.ACCELEROMETER))
+    }
+
+    @Test
+    fun `prettySensorName splits underscores`() {
+        assertEquals("Linear Acceleration", prettySensorName(SensorType.LINEAR_ACCELERATION))
+        assertEquals("Magnetic Field", prettySensorName(SensorType.MAGNETIC_FIELD))
+    }
 }

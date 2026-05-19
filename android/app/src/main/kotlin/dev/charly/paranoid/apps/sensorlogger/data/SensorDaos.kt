@@ -27,6 +27,8 @@ interface SensorSessionDao {
     suspend fun queryIncompleteSessions(): List<SensorSessionEntity>
 }
 
+data class SensorTypeCount(val sensorType: String, val count: Int)
+
 @Dao
 interface SensorEventDao {
     @Insert
@@ -37,4 +39,10 @@ interface SensorEventDao {
 
     @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")
     suspend fun countForSession(sessionId: Long): Int
+
+    @Query(
+        "SELECT sensorType, COUNT(*) AS count FROM sensor_events " +
+            "WHERE sessionId = :sessionId GROUP BY sensorType"
+    )
+    suspend fun countsBySensorType(sessionId: Long): List<SensorTypeCount>
 }

@@ -103,11 +103,11 @@
 ## 6. Ticket: UI Activities
 **Goal:** build `SensorLoggerActivity`, `SensorSessionsActivity`, and `SensorSessionDetailActivity`.
 
-- [ ] 6.1 Implement `SensorLoggerActivity`: bind to `SensorRecordingService`; Start/Stop button; live elapsed-time counter; idle-state summary; combined-recording notice logic.
-- [ ] 6.2 Implement `SensorSessionsActivity`: `RecyclerView` list, reverse-chronological order, incomplete badge, tap → detail.
-- [ ] 6.3 Implement `SensorSessionDetailActivity`: start/end times, duration, total events, per-sensor breakdown list, "Mark as closed" / "Delete" buttons for incomplete sessions.
-- [ ] 6.4 Dark theme layouts (background `#121212`, light text, 48dp min tap targets).
-- [ ] 6.5 **Refactor:** ensure no business logic lives in Activity classes; all data queries go through ViewModels.
+- [x] 6.1 Implement `SensorLoggerActivity`: bind to `SensorRecordingService`; Start/Stop button; live elapsed-time counter; idle-state summary; combined-recording notice logic.
+- [x] 6.2 Implement `SensorSessionsActivity`: `RecyclerView` list, reverse-chronological order, incomplete badge, tap → detail.
+- [x] 6.3 Implement `SensorSessionDetailActivity`: start/end times, duration, total events, per-sensor breakdown list, "Mark as closed" / "Delete" buttons for incomplete sessions.
+- [x] 6.4 Dark theme layouts (background `#121212`, light text, 48dp min tap targets).
+- [x] 6.5 **Refactor:** ensure no business logic lives in Activity classes; all data queries go through ViewModels.
 
 **Acceptance criteria:**
 - [ ] 6.6 UI smoke test: start recording, wait 60 s, stop; session appears in list with correct duration and event count.
@@ -118,15 +118,15 @@
 ## 7. Ticket: Manifest, hub registration, and validation
 **Goal:** wire everything into the Android project and validate the change.
 
-- [ ] 7.1 Add `SensorRecordingService` to `AndroidManifest.xml` with `android:foregroundServiceType="dataSync"`.
-- [ ] 7.2 Add `uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"` (API 34+) to manifest.
-- [ ] 7.3 Register `SensorLoggerActivity`, `SensorSessionsActivity`, `SensorSessionDetailActivity` in manifest.
-- [ ] 7.4 Add `SensorLoggerActivity` to the hub app list.
-- [ ] 7.5 Run `openspec validate add-sensor-logger-app --strict` and resolve any issues.
-- [ ] 7.6 Run `just test` (Docker) and confirm all new unit and instrumentation tests pass.
-- [ ] 7.7 Run `just build` (Docker) and confirm a debug APK builds cleanly.
+- [x] 7.1 Add `SensorRecordingService` to `AndroidManifest.xml` with `android:foregroundServiceType="dataSync"`.
+- [x] 7.2 Add `uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"` (API 34+) to manifest.
+- [x] 7.3 Register `SensorLoggerActivity`, `SensorSessionsActivity`, `SensorSessionDetailActivity` in manifest.
+- [x] 7.4 Add `SensorLoggerActivity` to the hub app list.
+- [x] 7.5 Run `openspec validate add-sensor-logger-app --strict` and resolve any issues.
+- [x] 7.6 Run `just test` (Docker) and confirm all new unit and instrumentation tests pass.
+- [x] 7.7 Run `just build` (Docker) and confirm a debug APK builds cleanly.
 
 **Acceptance criteria:**
-- [ ] 7.8 `openspec validate add-sensor-logger-app --strict` passes with no errors.
-- [ ] 7.9 `just test` passes.
-- [ ] 7.10 `just build` produces a debug APK without errors or warnings related to this change.
+- [x] 7.8 `openspec validate add-sensor-logger-app --strict` passes with no errors.
+- [x] 7.9 `just test` passes.
+- [x] 7.10 `just build` produces a debug APK without errors or warnings related to this change.

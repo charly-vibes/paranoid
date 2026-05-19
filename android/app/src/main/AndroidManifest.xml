@@ -84,6 +84,18 @@
             android:name=".apps.usageaudit.UsageAuditAppDetailActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".apps.sensorlogger.SensorLoggerActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.sensorlogger.SensorSessionsActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".apps.sensorlogger.SensorSessionDetailActivity"
+            android:exported="false" />
+
         <receiver
             android:name=".apps.usageaudit.UsageAuditPowerEventReceiver"
             android:exported="false">
@@ -106,6 +118,11 @@
             android:name=".apps.netmap.service.RecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <service
+            android:name=".apps.sensorlogger.service.SensorRecordingService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

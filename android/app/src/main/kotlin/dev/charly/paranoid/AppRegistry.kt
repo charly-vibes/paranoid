@@ -2,6 +2,7 @@ package dev.charly.paranoid
 
 import dev.charly.paranoid.apps.netdiag.NetDiagActivity
 import dev.charly.paranoid.apps.netmap.NetMapActivity
+import dev.charly.paranoid.apps.sensorlogger.SensorLoggerActivity
 import dev.charly.paranoid.apps.usageaudit.UsageAuditActivity
 
 object AppRegistry {
@@ -23,6 +24,12 @@ object AppRegistry {
             name = "UsageAudit",
             description = "Daily phone usage and overnight battery audit",
             activityClass = UsageAuditActivity::class.java
+        ),
+        AppEntry(
+            id = "sensorlogger",
+            name = "Sensor Logger",
+            description = "Record motion, orientation, and environment sensors",
+            activityClass = SensorLoggerActivity::class.java
         ),
     )
 }
