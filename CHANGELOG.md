@@ -2,6 +2,21 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.9.1] — 2026-05-20
+
+### Branding
+
+- Refreshed logo and Android launcher icons: cream background swapped for a vivid yellow (`#FFD60A`). All `mipmap-*dpi` launcher PNGs (square + round), `apple-touch-icon.png`, and `favicon.png` regenerated to match.
+
+### Site
+
+- Added a GitHub repo link in the public landing-page footer.
+- Sensor Logger now appears on the Pages homepage: added `sensorlogger/spec/functionality.md` so `build-metadata.sh` picks the mini-app up during the Deploy workflow.
+
+### Internal
+
+- Added a `lefthook.yml` workflow wiring up the existing `.beads/hooks/*` (pre-commit, pre-push, post-checkout, post-merge, prepare-commit-msg) so they run consistently via lefthook.
+
 ## [v0.9.0] — 2026-05-19
 
 ### Sensor Logger — new mini-app
