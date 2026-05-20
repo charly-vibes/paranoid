@@ -6,7 +6,7 @@ All notable changes to Paranoid are documented here.
 
 ### Branding
 
-- Refreshed logo and Android launcher icons: cream background swapped for a vivid yellow (`#FFD60A`). All `mipmap-*dpi` launcher PNGs (square + round), `apple-touch-icon.png`, and `favicon.png` regenerated to match.
+- Refreshed logo and Android launcher icons: cream background swapped for a vivid yellow (`#FFD60A`). All `mipmap-*dpi` launcher icons (square + round), `apple-touch-icon.png`, and `favicon.png` regenerated to match.
 
 ### Site
 
