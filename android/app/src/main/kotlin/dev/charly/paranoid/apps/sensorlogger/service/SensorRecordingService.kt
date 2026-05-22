@@ -18,6 +18,9 @@ import android.os.SystemClock
 import android.database.sqlite.SQLiteFullException
 import androidx.core.app.NotificationCompat
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
+import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfileStore
+import dev.charly.paranoid.apps.sensorlogger.config.from
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.toEntity
 import dev.charly.paranoid.apps.sensorlogger.model.SensorEvent
@@ -31,7 +34,9 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -42,6 +47,8 @@ class SensorRecordingService : Service(), SensorEventListener2 {
     private lateinit var sensorManager: SensorManager
     private lateinit var db: ParanoidDatabase
     private lateinit var wakeLock: PowerManager.WakeLock
+    private lateinit var recordingProfileStore: RecordingProfileStore
+    private lateinit var presenceProbe: SensorPresenceProbe
 
     private val buffer = SensorEventBuffer()
 
@@ -57,6 +64,15 @@ class SensorRecordingService : Service(), SensorEventListener2 {
 
     private val _eventCount = MutableStateFlow(0)
     val eventCount: StateFlow<Int> = _eventCount
+
+    /**
+     * Snapshot of the [RecordingProfile] taken at `startRecording()`. Frozen
+     * for the duration of the session — subsequent `RecordingProfileStore`
+     * updates do NOT mutate this flow until the next session begins. `null`
+     * when no session is active.
+     */
+    private val _sessionProfile = MutableStateFlow<RecordingProfile?>(null)
+    val sessionProfile: StateFlow<RecordingProfile?> = _sessionProfile
 
     private var notificationJob: Job? = null
     private var periodicFlushJob: Job? = null
@@ -75,6 +91,8 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         super.onCreate()
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         db = ParanoidDatabase.getInstance(this)
+        recordingProfileStore = RecordingProfileStore.from(this)
+        presenceProbe = SensorManagerPresenceProbe(sensorManager)
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKE_LOCK_TAG)
         createNotificationChannel()
@@ -96,6 +114,20 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         _eventCount.value = 0
         _registeredSensors.clear()
 
+        // Freeze the recording profile for the duration of this session.
+        // Subsequent RecordingProfileStore.update(...) calls do NOT affect
+        // the in-flight registration set or the write-path gate.
+        //
+        // runBlocking on the main thread is intentional and bounded: this is
+        // a single-key read from DataStore (in-memory once the cache is warm,
+        // a small file read on first launch) and we need the snapshot before
+        // calling startForeground / registerListener so the foreground
+        // notification reflects which sensors will actually run. The
+        // alternative — async snapshot + delayed registration — would risk
+        // missing Android's 5s ANR budget for foreground services.
+        val snapshot = runBlocking { recordingProfileStore.flow.first() }
+        _sessionProfile.value = snapshot
+
         startForeground(NOTIFICATION_ID, buildNotification(0, 0))
 
         scope.launch(Dispatchers.IO) {
@@ -104,7 +136,7 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             )
         }
 
-        registerAllSensors()
+        registerSensorsFromProfile(snapshot)
 
         notificationJob = scope.launch {
             while (true) {
@@ -124,21 +156,25 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         }
     }
 
-    private fun registerAllSensors() {
-        SENSOR_TYPE_MAP.forEach { (androidType, domainType) ->
-            val sensor = sensorManager.getDefaultSensor(androidType) ?: return@forEach
+    private fun registerSensorsFromProfile(profile: RecordingProfile) {
+        val plan = planRegistrations(profile, presenceProbe)
+        for (planned in plan) {
+            val androidType = ANDROID_SENSOR_TYPE_OF[planned.type] ?: continue
+            val sensor = sensorManager.getDefaultSensor(androidType) ?: continue
             val registered = sensorManager.registerListener(
-                this, sensor,
-                SensorManager.SENSOR_DELAY_NORMAL,
-                BATCH_LATENCY_US
+                this, sensor, planned.delay, BATCH_LATENCY_US,
             )
-            if (registered) _registeredSensors.add(domainType)
+            if (registered) _registeredSensors.add(planned.type)
         }
     }
 
     override fun onSensorChanged(event: AndroidSensorEvent) {
         val type = SENSOR_TYPE_MAP[event.sensor.type] ?: return
         if (!_isRecording.value) return
+        // Write-path filter: visualize-only sensors (enabled=false,
+        // visibleOnGraph=true) are registered with SensorManager but their
+        // samples must NOT reach the persisted buffer.
+        if (!shouldWrite(_sessionProfile.value, type)) return
         val elapsedMs = SystemClock.elapsedRealtime() - sessionStartElapsedMs
         val domainEvent = SensorEvent(
             sessionId = sessionId,
@@ -190,6 +226,7 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         } finally {
             if (wakeLock.isHeld) wakeLock.release()
             _registeredSensors.clear()
+            _sessionProfile.value = null
             sessionId = -1L
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -213,6 +250,7 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         _isRecording.value = false
         sensorManager.unregisterListener(this)
         _registeredSensors.clear()
+        _sessionProfile.value = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         postErrorNotification()
         stopSelf()
@@ -305,6 +343,10 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             Sensor.TYPE_LIGHT to SensorType.LIGHT,
             Sensor.TYPE_PROXIMITY to SensorType.PROXIMITY,
         )
+
+        /** Inverse of [SENSOR_TYPE_MAP]: domain [SensorType] -> Android `Sensor.TYPE_*` int. */
+        val ANDROID_SENSOR_TYPE_OF: Map<SensorType, Int> =
+            SENSOR_TYPE_MAP.entries.associate { (androidType, domainType) -> domainType to androidType }
 
         fun startIntent(context: Context) =
             Intent(context, SensorRecordingService::class.java).apply {

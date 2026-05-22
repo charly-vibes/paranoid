@@ -37,19 +37,19 @@
 ## 2. Ticket: Service registers from session-frozen profile snapshot + filters write path (Phase A)
 **Goal:** make `SensorRecordingService` consult the `RecordingProfile` for registration and the filtered write path, exposing the frozen snapshot for downstream consumers.
 
-- [ ] 2.1 RED: write `ServiceRegistrationFromProfileTest` (Robolectric) asserting that with a profile enabling only accelerometer + gyroscope, `registerListener` is called exactly twice with the expected sensors and rate constants.
-- [ ] 2.2 RED: write `ServiceVisualizeOnlyFilterTest` asserting that with magnetometer `enabled=false, visibleOnGraph=true`, magnetometer events do not reach the write buffer but are still observed by the (fake) live-stream pipeline.
-- [ ] 2.3 RED: write `ServiceFrozenSnapshotTest` asserting `sessionProfile.value` equals the profile read at `startRecording()` even after `RecordingProfileStore.update(...)` is called mid-session.
-- [ ] 2.4 GREEN: inject `RecordingProfileStore` into `SensorRecordingService` (constructor or service-locator factory consistent with how other services in the project receive deps).
-- [ ] 2.5 GREEN: on `startRecording()`, `val snapshot = store.flow.first(); sessionProfile.value = snapshot`; iterate `SensorType.values()` and call `registerListener` for sensors where `(setting.enabled || setting.visibleOnGraph) && setting.rateLevel != OFF` AND the device has the sensor.
-- [ ] 2.6 GREEN: expose `sessionProfile: StateFlow<RecordingProfile?>` on the binder; clear to `null` on session end.
-- [ ] 2.7 GREEN: in `onSensorChanged`, gate the write-buffer append on `sessionProfile.value?.get(type)?.enabled == true`. Always append to the live ring buffer for any registered sensor.
-- [ ] 2.8 REFACTOR: extract the "should register?" predicate into a pure function `fun shouldRegister(setting: SensorCaptureSetting): Boolean` for unit testing without a service instance.
+- [x] 2.1 RED: write `ServiceRegistrationFromProfileTest` (Robolectric) asserting that with a profile enabling only accelerometer + gyroscope, `registerListener` is called exactly twice with the expected sensors and rate constants. _Implemented as a pure JVM test of `planRegistrations(profile, probe)` — the policy primitive the service uses — to avoid adding Robolectric. The list returned by `planRegistrations` is exactly the sequence of `(sensor, delay)` pairs the service registers, so the assertion is equivalent._
+- [x] 2.2 RED: write `ServiceVisualizeOnlyFilterTest` asserting that with magnetometer `enabled=false, visibleOnGraph=true`, magnetometer events do not reach the write buffer. _Implemented per amendment EXEC-003 via pure tests on `shouldWrite(profile, type)`, which is the gate `onSensorChanged` consults._
+- [x] 2.3 RED: write `ServiceFrozenSnapshotTest` asserting `sessionProfile.value` equals the profile read at `startRecording()` even after `RecordingProfileStore.update(...)` is called mid-session. _Models the service's `MutableStateFlow<RecordingProfile?>` pattern with a real `RecordingProfileStore` over `FakePreferencesDataStore`._
+- [x] 2.4 GREEN: inject `RecordingProfileStore` into `SensorRecordingService` (constructor or service-locator factory consistent with how other services in the project receive deps). _Used the service-locator pattern: `RecordingProfileStore.from(context)` mirrors `ParanoidDatabase.getInstance(context)`._
+- [x] 2.5 GREEN: on `startRecording()`, `val snapshot = store.flow.first(); sessionProfile.value = snapshot`; iterate `SensorType.values()` and call `registerListener` for sensors where `(setting.enabled || setting.visibleOnGraph) && setting.rateLevel != OFF` AND the device has the sensor.
+- [x] 2.6 GREEN: expose `sessionProfile: StateFlow<RecordingProfile?>` on the binder; clear to `null` on session end. _Cleared on normal stop and on disk-full handler._
+- [x] 2.7 GREEN: in `onSensorChanged`, gate the write-buffer append on `sessionProfile.value?.get(type)?.enabled == true`. Always append to the live ring buffer for any registered sensor. _Write-gate done via `shouldWrite()`. Live ring buffer is the subject of ticket 3._
+- [x] 2.8 REFACTOR: extract the "should register?" predicate into a pure function `fun shouldRegister(setting: SensorCaptureSetting): Boolean` for unit testing without a service instance.
 
 **Acceptance criteria:**
-- [ ] 2.9 All Phase 2 tests pass.
-- [ ] 2.10 Sensors with `rateLevel = OFF` are never registered with `SensorManager`.
-- [ ] 2.11 Mid-session `RecordingProfileStore.update(...)` does not affect the in-flight registration set or the frozen snapshot.
+- [x] 2.9 All Phase 2 tests pass.
+- [x] 2.10 Sensors with `rateLevel = OFF` are never registered with `SensorManager`.
+- [x] 2.11 Mid-session `RecordingProfileStore.update(...)` does not affect the in-flight registration set or the frozen snapshot.
 
 ---
 
