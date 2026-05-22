@@ -94,6 +94,15 @@ android {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
         }
     }
+
+    testOptions {
+        unitTests {
+            // Allow plain JUnit tests to invoke Android framework calls (e.g.
+            // android.util.Log) without throwing; they return defaults instead
+            // of needing Robolectric.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
@@ -109,6 +118,9 @@ dependencies {
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // DataStore Preferences (SensorLogger RecordingProfile)
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
 
     // MapLibre
     implementation("org.maplibre.gl:android-sdk:11.5.2")
