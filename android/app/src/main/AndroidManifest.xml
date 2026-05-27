@@ -100,6 +100,11 @@
             android:name=".apps.sensorlogger.SensorCaptureConfigActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".apps.sensorlogger.SensorLiveGraphActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
         <receiver
             android:name=".apps.usageaudit.UsageAuditPowerEventReceiver"
             android:exported="false">

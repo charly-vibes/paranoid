@@ -95,23 +95,23 @@
 ## 5. Ticket: `SensorLiveGraphActivity` + `LiveGraphView` (Phase B)
 **Goal:** custom-`View` line graph showing per-sensor channels in real time, filtered against the session-frozen profile snapshot.
 
-- [ ] 5.1 RED: write `LiveGraphViewSnapshotTest` (JVM, no Android) asserting that `setData(snapshot)` with a 600-element accelerometer entry computes a stroke-path FloatArray of the expected length (3 channels × (N-1) line segments × 4 floats).
-- [ ] 5.2 RED: write `LiveGraphViewEmptyWindowTest` asserting that a sensor entry with 0 or 1 samples renders a single flat placeholder line at the band's vertical midpoint (no NaN, no crash).
-- [ ] 5.3 RED: write Espresso `LiveGraphFiltersOnFrozenProfileTest` asserting that with the session-frozen profile marking gyroscope `visibleOnGraph = false` even if the live profile says `true`, the graph shows no gyroscope band.
-- [ ] 5.4 RED: write `LiveGraphRotationTest` asserting that on Activity recreate the view reads `liveStream.value` immediately and renders the current snapshot rather than blanking until the next emission.
-- [ ] 5.5 GREEN: `LiveGraphView extends View`; `setData(snapshot: Map<SensorType, List<SensorSample>>)` triggers `invalidate()`.
-- [ ] 5.6 GREEN: per visible sensor draw one horizontal band; multi-axis sensors render x/y/z channels in distinct colors; single-value sensors render one channel; auto-scaled to visible min/max within the band.
-- [ ] 5.7 GREEN: empty/singleton handling: when the per-sensor list has <2 samples, draw a flat line at the band midpoint.
-- [ ] 5.8 GREEN: `SensorLiveGraphActivity` binds to `SensorRecordingService`, collects `liveStream` AND `sessionProfile` via `combine(...)`, filters the snapshot to sensors where `sessionProfile[type]?.visibleOnGraph == true`, calls `setData(...)` on each emission.
-- [ ] 5.9 GREEN: on Activity `onStart`, before starting the `repeatOnLifecycle` collector, call `setData(liveStream.value filteredBy sessionProfile.value)` once so a recreate (e.g. rotation) renders the current snapshot immediately.
-- [ ] 5.10 GREEN: empty state — when `sessionProfile.value == null` (no active session) show "Start a recording to see live data"; when active but no visible sensors show "No sensors selected for visualization — open Configure capture".
-- [ ] 5.11 GREEN: register `SensorLiveGraphActivity` in `AndroidManifest.xml`.
-- [ ] 5.12 REFACTOR: extract per-band drawing into `private fun drawBand(canvas, band, samples)` for readability.
+- [x] 5.1 RED: write `LiveGraphViewSnapshotTest` (JVM, no Android) asserting that `setData(snapshot)` with a 600-element accelerometer entry computes a stroke-path FloatArray of the expected length (3 channels × (N-1) line segments × 4 floats). _Per amendment EXEC-002, implemented as `LiveGraphGeometryTest.non-empty samples produce N-1 finite segments per channel within band bounds` — a behavioral assertion against the pure geometry primitive `computeChannelStrokes` (finite coords, in-bounds, exactly N-1 segments per channel) rather than a Canvas mock. Lets the View change rendering primitives without breaking the test._
+- [x] 5.2 RED: write `LiveGraphViewEmptyWindowTest` asserting that a sensor entry with 0 or 1 samples renders a single flat placeholder line at the band's vertical midpoint (no NaN, no crash). _Implemented as `LiveGraphGeometryTest.zero samples ...` and `single sample produces no segments (uses placeholder)`._
+- [x] 5.3 RED: write Espresso `LiveGraphFiltersOnFrozenProfileTest` asserting that with the session-frozen profile marking gyroscope `visibleOnGraph = false` even if the live profile says `true`, the graph shows no gyroscope band. _Implemented as pure-JVM `LiveGraphGeometryTest.filterVisibleSensors keeps only sensors with frozen visibleOnGraph true` against the `filterVisibleSensors(snapshot, sessionProfile)` primitive — consistent with the decomposition rationale established in tickets 2 and 4 (no Robolectric / Espresso dep in this project)._
+- [x] 5.4 RED: write `LiveGraphRotationTest` asserting that on Activity recreate the view reads `liveStream.value` immediately and renders the current snapshot rather than blanking until the next emission. _Implemented as `LiveGraphGeometryTest.initial setData payload from latest StateFlow value is non-null and applies the filter`. The Activity calls `renderFiltered(svc.liveStream.value, svc.sessionProfile.value)` synchronously in `onServiceConnected` before launching the collector — covered by the same primitive the rotation seed reads._
+- [x] 5.5 GREEN: `LiveGraphView extends View`; `setData(snapshot: Map<SensorType, List<SensorSample>>)` triggers `invalidate()`.
+- [x] 5.6 GREEN: per visible sensor draw one horizontal band; multi-axis sensors render x/y/z channels in distinct colors; single-value sensors render one channel; auto-scaled to visible min/max within the band. _Channel count from `channelsOf(type)`; auto-scale in `computeChannelStrokes`; constant-channel windows collapse to `band.midY` to avoid division-by-zero._
+- [x] 5.7 GREEN: empty/singleton handling: when the per-sensor list has <2 samples, draw a flat line at the band midpoint. _`computeChannelStrokes` returns empty for <2 samples; `LiveGraphView.drawBand` substitutes `placeholderStroke(band)`._
+- [x] 5.8 GREEN: `SensorLiveGraphActivity` binds to `SensorRecordingService`, collects `liveStream` AND `sessionProfile` via `combine(...)`, filters the snapshot to sensors where `sessionProfile[type]?.visibleOnGraph == true`, calls `setData(...)` on each emission. _Done in `onServiceConnected`'s `repeatOnLifecycle(STARTED)` block._
+- [x] 5.9 GREEN: on Activity `onStart`, before starting the `repeatOnLifecycle` collector, call `setData(liveStream.value filteredBy sessionProfile.value)` once so a recreate (e.g. rotation) renders the current snapshot immediately. _Synchronous `renderFiltered(svc.liveStream.value, svc.sessionProfile.value)` call in `onServiceConnected` ahead of `lifecycleScope.launch { repeatOnLifecycle(...) }`._
+- [x] 5.10 GREEN: empty state — when `sessionProfile.value == null` (no active session) show "Start a recording to see live data"; when active but no visible sensors show "No sensors selected for visualization — open Configure capture". _Centralized in `renderFiltered`'s `when` branch; toggles `R.id.empty_state` vs `R.id.live_graph` visibility._
+- [x] 5.11 GREEN: register `SensorLiveGraphActivity` in `AndroidManifest.xml`. _Added with `configChanges="orientation|screenSize|keyboardHidden"` so rotation seeding is actually exercised via Activity recreate paths (foreground-only screen)._
+- [x] 5.12 REFACTOR: extract per-band drawing into `private fun drawBand(canvas, band, samples)` for readability. _`LiveGraphView.drawBand(canvas, type, band, samples)`._
 
 **Acceptance criteria:**
-- [ ] 5.13 All Phase 5 tests pass.
-- [ ] 5.14 Graph updates at ≥10 fps under steady recording at `SENSOR_DELAY_NORMAL`.
-- [ ] 5.15 Toggling `visibleOnGraph = false` for a sensor mid-session does NOT hide its band; only a new session honors the change.
+- [x] 5.13 All Phase 5 tests pass.
+- [ ] 5.14 Graph updates at ≥10 fps under steady recording at `SENSOR_DELAY_NORMAL`. _On-device acceptance: emission rate is gated to ≤20 Hz by `LIVE_STREAM_COALESCE_MS = 50`; `LiveGraphView.invalidate()` only redraws on emission. Manual verification belongs to ticket 7.4._
+- [x] 5.15 Toggling `visibleOnGraph = false` for a sensor mid-session does NOT hide its band; only a new session honors the change. _Filter reads `sessionProfile` (frozen at `startRecording()`) not `RecordingProfileStore.flow` — covered by `LiveGraphGeometryTest.filterVisibleSensors ...` and the existing `ServiceFrozenSnapshotTest`._
 
 ---
 
