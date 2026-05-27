@@ -74,6 +74,34 @@ class SensorRecordingService : Service(), SensorEventListener2 {
     private val _sessionProfile = MutableStateFlow<RecordingProfile?>(null)
     val sessionProfile: StateFlow<RecordingProfile?> = _sessionProfile
 
+    /**
+     * Live ring buffers, populated only for sensors actually registered in
+     * the current session. Empty when no session is active.
+     * See design.md §"Live stream is a coalesced side channel" and ticket 3.6.
+     */
+    private val liveBuffers = mutableMapOf<SensorType, FixedSizeRingBuffer<SensorSample>>()
+
+    private val liveStreamCoalescer = LiveStreamCoalescer(
+        intervalMs = LIVE_STREAM_COALESCE_MS,
+        snapshot = {
+            // Defensive copy of the map *and* per-sensor snapshots.
+            // The synchronized accesses on this and each ring buffer
+            // serialize with appends on the sensor callback thread.
+            synchronized(liveBuffers) {
+                liveBuffers.mapValues { (_, buf) -> buf.snapshot() }
+            }
+        },
+    )
+
+    /**
+     * Coalesced per-sensor live samples, emitting at most every
+     * [LIVE_STREAM_COALESCE_MS] ms. Cleared to empty when no session is
+     * active. Safe to collect from any lifecycle scope; back-pressure from
+     * slow collectors never flows back to the write path.
+     */
+    val liveStream: StateFlow<Map<SensorType, List<SensorSample>>>
+        get() = liveStreamCoalescer.flow
+
     private var notificationJob: Job? = null
     private var periodicFlushJob: Job? = null
     private var flushCompleteDeferred: CompletableDeferred<Unit>? = null
@@ -138,6 +166,10 @@ class SensorRecordingService : Service(), SensorEventListener2 {
 
         registerSensorsFromProfile(snapshot)
 
+        // Start the coalesced live-stream publisher after registration so
+        // its snapshot lambda sees the populated `liveBuffers` set.
+        liveStreamCoalescer.start(scope)
+
         notificationJob = scope.launch {
             while (true) {
                 delay(NOTIFICATION_UPDATE_MS)
@@ -164,18 +196,35 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             val registered = sensorManager.registerListener(
                 this, sensor, planned.delay, BATCH_LATENCY_US,
             )
-            if (registered) _registeredSensors.add(planned.type)
+            if (registered) {
+                _registeredSensors.add(planned.type)
+                // Allocate the live ring buffer ONLY for sensors actually
+                // in the session's registered set (ticket 3.11 / 3.6).
+                synchronized(liveBuffers) {
+                    liveBuffers[planned.type] = FixedSizeRingBuffer(LIVE_RING_BUFFER_CAPACITY)
+                }
+            }
         }
     }
 
     override fun onSensorChanged(event: AndroidSensorEvent) {
         val type = SENSOR_TYPE_MAP[event.sensor.type] ?: return
         if (!_isRecording.value) return
+        val elapsedMs = SystemClock.elapsedRealtime() - sessionStartElapsedMs
+
+        // Always feed the live ring buffer for any registered sensor — the
+        // live graph filters visualize-only vs disabled separately via the
+        // session-frozen profile (ticket 3.7 / 2.7).
+        val ringBuffer = synchronized(liveBuffers) { liveBuffers[type] }
+        if (ringBuffer != null) {
+            ringBuffer.append(SensorSample(elapsedMs, event.values.copyOf()))
+            liveStreamCoalescer.markDirty()
+        }
+
         // Write-path filter: visualize-only sensors (enabled=false,
         // visibleOnGraph=true) are registered with SensorManager but their
         // samples must NOT reach the persisted buffer.
         if (!shouldWrite(_sessionProfile.value, type)) return
-        val elapsedMs = SystemClock.elapsedRealtime() - sessionStartElapsedMs
         val domainEvent = SensorEvent(
             sessionId = sessionId,
             elapsedMs = elapsedMs,
@@ -227,6 +276,8 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             if (wakeLock.isHeld) wakeLock.release()
             _registeredSensors.clear()
             _sessionProfile.value = null
+            liveStreamCoalescer.stop()
+            synchronized(liveBuffers) { liveBuffers.clear() }
             sessionId = -1L
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -251,6 +302,8 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         sensorManager.unregisterListener(this)
         _registeredSensors.clear()
         _sessionProfile.value = null
+        liveStreamCoalescer.stop()
+        synchronized(liveBuffers) { liveBuffers.clear() }
         stopForeground(STOP_FOREGROUND_REMOVE)
         postErrorNotification()
         stopSelf()
@@ -331,6 +384,25 @@ class SensorRecordingService : Service(), SensorEventListener2 {
         const val WAKE_LOCK_TAG = "paranoid:sensor_recording"
         const val WAKE_LOCK_TIMEOUT_MS = 5_000L
         const val FLUSH_AWAIT_TIMEOUT_MS = 500L
+
+        /**
+         * Maximum live-stream emission rate, expressed as the minimum
+         * milliseconds between two `liveStream.value =` writes.
+         *
+         * 50 ms → 20 Hz upper bound — sufficient for a glanceable line
+         * graph and well below the >1 kHz hardware burst rates we need to
+         * coalesce. See `update-sensor-logger-config-and-graph/design.md`
+         * §"Live stream is a coalesced side channel".
+         */
+        const val LIVE_STREAM_COALESCE_MS = 50L
+
+        /**
+         * Per-sensor live ring buffer depth. ~12 s of samples at
+         * `SENSOR_DELAY_NORMAL` (~50 Hz) — enough for visual judgment of
+         * the recent waveform without unbounded memory growth.
+         * See design.md §"Custom `View` for the line graph".
+         */
+        const val LIVE_RING_BUFFER_CAPACITY = 600
 
         val SENSOR_TYPE_MAP = mapOf(
             Sensor.TYPE_ACCELEROMETER to SensorType.ACCELEROMETER,
