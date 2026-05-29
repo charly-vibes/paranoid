@@ -98,7 +98,47 @@
         android:clickable="true"
         android:focusable="true"
         android:layout_marginHorizontal="24dp"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tv_start_gate_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:text="No sensors enabled — open Configure capture"
+        android:textColor="#FFA500"
+        android:textSize="12sp"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/btn_configure"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:text="Configure capture"
+        android:textColor="#AAAAAA"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/btn_live_graph"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:text="Live graph"
+        android:textColor="#AAAAAA"
+        android:textSize="14sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:enabled="false"
+        android:alpha="0.4"
+        android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="8dp" />
 
     <TextView
         android:id="@+id/btn_sessions"

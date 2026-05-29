@@ -118,17 +118,17 @@
 ## 6. Ticket: `SensorLoggerActivity` navigation + Start gate + first-launch dialog (Phase A)
 **Goal:** entry points from the main screen, gate the Start button, surface the migration dialog.
 
-- [ ] 6.1 RED: write `StartButtonGateTest` asserting that with a profile where every sensor is `OFF` (or has `enabled=false && visibleOnGraph=false`), the Start button is disabled and a hint reading "No sensors enabled — open Configure capture" is shown.
-- [ ] 6.2 RED: write `LiveGraphButtonEnabledOnlyWhileRecordingTest` asserting that "Live graph" is enabled iff `service.isRecording` is true.
-- [ ] 6.3 RED: write `FirstLaunchDialogTest` asserting (a) when `seen_capture_defaults_dialog_v2 == false` the dialog is shown on resume, (b) dismiss sets the key to `true`, (c) on subsequent launches the dialog does not appear.
-- [ ] 6.4 GREEN: add "Configure capture" button — always enabled — launching `SensorCaptureConfigActivity`.
-- [ ] 6.5 GREEN: add "Live graph" button — bound to `service.isRecording` — launching `SensorLiveGraphActivity`.
-- [ ] 6.6 GREEN: observe `RecordingProfileStore.flow`; compute "any sensor will be registered" predicate; toggle Start button enabled/disabled with the hint text accordingly.
-- [ ] 6.7 GREEN: observe `RecordingProfileStore.hasSeenDefaultsDialog()`; on first false value (after `onResume`), show a dialog explaining the new default-record set with a button "Open Configure capture" → launches config activity; dismiss calls `markDefaultsDialogSeen()`.
+- [x] 6.1 RED: write `StartButtonGateTest` asserting that with a profile where every sensor is `OFF` (or has `enabled=false && visibleOnGraph=false`), the Start button is disabled and a hint reading "No sensors enabled — open Configure capture" is shown. _Implemented as pure-JVM `StartGateTest` over the `canStartRecording(profile)` predicate + `START_GATE_HINT` constant in `ui/StartGate.kt`._
+- [x] 6.2 RED: write `LiveGraphButtonEnabledOnlyWhileRecordingTest` asserting that "Live graph" is enabled iff `service.isRecording` is true. _Implemented in `StartGateTest` over `isLiveGraphButtonEnabled(isRecording: Boolean)`._
+- [x] 6.3 RED: write `FirstLaunchDialogTest` asserting (a) when `seen_capture_defaults_dialog_v2 == false` the dialog is shown on resume, (b) dismiss sets the key to `true`, (c) on subsequent launches the dialog does not appear. _Implemented in `StartGateTest` over `shouldShowDefaultsDialog(hasSeenPersisted, alreadyShownInThisSession)`. The Activity calls `markDefaultsDialogSeen()` from a single `setOnDismissListener` (idempotent across positive/negative/back/outside-tap) which covers (b). The `alreadyShownInThisSession` guard covers the within-Activity re-emit case; persistence covers (c)._
+- [x] 6.4 GREEN: add "Configure capture" button — always enabled — launching `SensorCaptureConfigActivity`.
+- [x] 6.5 GREEN: add "Live graph" button — bound to `service.isRecording` — launching `SensorLiveGraphActivity`. _`renderLiveGraphButton(isRecording)` toggles `isEnabled` + alpha; click handler launches the activity._
+- [x] 6.6 GREEN: observe `RecordingProfileStore.flow`; compute "any sensor will be registered" predicate; toggle Start button enabled/disabled with the hint text accordingly. _`lifecycleScope.launch` collector + `renderStartGate()`; Start handler also short-circuits when `startEnabledByGate == false` as a belt-and-braces guard against tap races._
+- [x] 6.7 GREEN: observe `RecordingProfileStore.hasSeenDefaultsDialog()`; on first false value (after `onResume`), show a dialog explaining the new default-record set with a button "Open Configure capture" → launches config activity; dismiss calls `markDefaultsDialogSeen()`. _Wired via `shouldShowDefaultsDialog` predicate with the `defaultsDialogShownInSession` re-entry guard described above._
 
 **Acceptance criteria:**
-- [ ] 6.8 All Phase 6 tests pass.
-- [ ] 6.9 Start button cannot be tapped to begin a session with an empty registration set.
+- [x] 6.8 All Phase 6 tests pass.
+- [x] 6.9 Start button cannot be tapped to begin a session with an empty registration set. _Belt-and-braces: button is `isEnabled = false` AND click handler checks `startEnabledByGate`._
 
 ---
 
