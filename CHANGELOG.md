@@ -2,6 +2,27 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.1] — 2026-05-29 _(pre-release)_
+
+### Sensor Logger — per-sensor capture configuration + live graph
+
+- **BREAKING**: recording no longer captures every available sensor. By default only accelerometer, gyroscope, and linear acceleration are enabled at `SENSOR_DELAY_NORMAL`. A one-time first-launch dialog explains the change and points at the new Configure capture screen.
+- **Configure capture** screen (`SensorCaptureConfigActivity`) — per-sensor row for every known `SensorType` with a "Record" checkbox (`enabled`), a "Show on graph" checkbox (`visibleOnGraph`), and a rate dropdown (`Off` / `Normal` / `UI` / `Game` / `Fastest` — Android `SENSOR_DELAY_*` levels). Profile persists across process restarts via DataStore Preferences (flattened per-sensor keys, no Room migration). Sensors absent on the device render greyed out, non-interactive, with the suffix "— Unavailable on this device". A non-dismissable "Applies to next recording" banner appears while a session is in progress and disappears live when it ends.
+- **Live graph** screen (`SensorLiveGraphActivity`) — custom-`View` line graph stacked top-to-bottom, one band per visible sensor. Multi-axis sensors render x/y/z channels in distinct colors (red/teal/yellow); single-value sensors render one. Per-band auto-scaled to the visible window's min/max; constant-channel windows collapse to the band midpoint instead of dividing by zero. On rotation the view re-seeds from `liveStream.value` synchronously so the snapshot renders without a blank gap.
+- **"Visualize without record"** is now a first-class mode — a sensor with `enabled = false, visibleOnGraph = true, rateLevel != OFF` is registered with `SensorManager` so its samples populate the live graph, but its events are filtered out of the persisted write buffer.
+- **Start gate** — `SensorLoggerActivity` disables the Start button (and shows "No sensors enabled — open Configure capture") whenever the current profile would register no sensors. New `Configure capture` and `Live graph` navigation buttons; the latter is enabled only while a session is active.
+
+### Internal
+
+- **Session-frozen profile snapshot** — `SensorRecordingService.sessionProfile: StateFlow<RecordingProfile?>` is captured at `startRecording()` from `RecordingProfileStore.flow.first()` and held for the entire session. Mid-session edits to the saved profile do not affect the in-flight registration set or the write-path / live-graph filters until the next session begins.
+- **Coalesced live-sample side channel** — new `liveStream: StateFlow<Map<SensorType, List<SensorSample>>>` exposed through the binder, fed from a per-sensor `FixedSizeRingBuffer<SensorSample>(capacity = 600)`. A `LiveStreamCoalescer` on `Dispatchers.Default` uses an `AtomicBoolean` dirty flag + 50 ms ticker to emit at most 20 Hz — the sensor callback hot path only flips the bit, so slow or cancelled UI subscribers cannot apply back-pressure to `onSensorChanged` or the persisted write path.
+- New pure-Kotlin modules with full unit-test coverage: `RecordingProfile` / `RecordingProfileStore` / `SensorRateLevel` (config), `RecordingPolicy` (`shouldRegister` / `shouldWrite` / `planRegistrations`), `FixedSizeRingBuffer` / `LiveStreamCoalescer`, `LiveGraphGeometry` (band layout + per-channel auto-scaled stroke segments), `StartGate` (`canStartRecording` / `isLiveGraphButtonEnabled` / `shouldShowDefaultsDialog`).
+- DataStore Preferences dependency (`androidx.datastore:datastore-preferences`) added to the sensor logger module; the recording-profile file uses 3 primitive keys per sensor (`<NAME>_enabled`, `<NAME>_rate`, `<NAME>_visible`) plus the bookkeeping key `seen_capture_defaults_dialog_v2`. `IOException` on read falls back to `RecordingProfile.Default` without surfacing to the consumer.
+
+### Privacy invariant
+
+- Unchanged. All sensor data — both recorded sessions and the live-graph ring buffer — stays fully on-device. The live stream is an in-memory `StateFlow` that never leaves the process.
+
 ## [v0.9.1] — 2026-05-20
 
 ### Branding
