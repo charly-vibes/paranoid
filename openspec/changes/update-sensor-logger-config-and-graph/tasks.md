@@ -147,3 +147,117 @@
 - [ ] 7.7 `openspec validate` passes strict.
 - [ ] 7.8 `just test` passes.
 - [ ] 7.9 `just build` passes.
+
+---
+
+> **Amendment EXEC-004 (post-`v0.10.0-rc.1`)** — tickets 8–12 replace the
+> `SensorRateLevel` enum with the `SamplingRate` sum type, simplify the config
+> row, add per-band actual delivered rate labels to the live graph, and bump
+> the first-launch dialog key from `_v2` to `_v3`. They land as **Phase C**
+> after Phase A + B and are gated by a refreshed manual checklist in ticket 12.
+
+---
+
+## 8. Ticket: `SamplingRate` domain + persistence migration (Phase C)
+**Goal:** introduce `SamplingRate` and migrate the persisted `<NAME>_rate` encoding while preserving any value written by `v0.10.0-rc.1`.
+
+- [ ] 8.1 RED: write `SamplingRateMappingTest` (pure JVM) asserting `Off.toSamplingPeriodUs() == null`, `Auto.toSamplingPeriodUs() == SensorManager.SENSOR_DELAY_NORMAL` (200_000), and `Hz(50).toSamplingPeriodUs() == 20_000`.
+- [ ] 8.2 RED: write `SamplingRateEncodingTest` asserting round-trip through `encode()` / `decode()`:
+  - `Off ↔ "OFF"`
+  - `Auto ↔ "AUTO"`
+  - `Hz(50) ↔ "HZ:50"`
+  - and asserting `decode("HZ:0")`, `decode("HZ:-3")`, `decode("HZ:abc")`, `decode("FOO")` all return `null` (caller substitutes per-sensor default).
+- [ ] 8.3 RED: extend `RecordingProfileStoreTest` to add:
+  - "legacy `NORMAL` / `UI` / `GAME` / `FASTEST` / `OFF` values from `v0.10.0-rc.1` decode to `Auto` / `Hz(16)` / `Hz(50)` / `Hz(200)` / `Off`"
+  - "after `update(...)` the persisted string is rewritten in the new encoding (`AUTO` / `HZ:<n>`) even if the underlying value did not change"
+- [ ] 8.4 RED: add `LegacyDialogKeyTest` asserting `hasSeenDefaultsDialog()` emits `false` when only `seen_capture_defaults_dialog_v2 = true` exists in the store; the new code looks only at `_v3`.
+- [ ] 8.5 GREEN: replace `enum class SensorRateLevel` with `sealed class SamplingRate { object Off; object Auto; data class Hz(val value: Int) }` plus `fun toSamplingPeriodUs(): Int?`. Update `SensorCaptureSetting` field `rateLevel: SensorRateLevel → samplingRate: SamplingRate`.
+- [ ] 8.6 GREEN: implement `SamplingRate.encode(): String` and `fun SamplingRate.Companion.decode(s: String): SamplingRate?` accepting both new (`OFF` / `AUTO` / `HZ:<n>`) and legacy (`NORMAL` / `UI` / `GAME` / `FASTEST`) forms.
+- [ ] 8.7 GREEN: update `RecordingProfileStore` so reads call `decode(...)` per sensor (falling back to per-sensor default on `null`); writes always serialize via `encode(...)`.
+- [ ] 8.8 GREEN: bump bookkeeping key from `seen_capture_defaults_dialog_v2` to `seen_capture_defaults_dialog_v3`; leave the `_v2` key untouched (no migration write).
+- [ ] 8.9 GREEN: update `RecordingProfile.Default` to use `samplingRate = Auto` for the three pre-enabled sensors and `Off` for the rest.
+- [ ] 8.10 REFACTOR: collapse legacy-name mapping into a private `LEGACY_RATE_HZ: Map<String, SamplingRate>` table referenced from `decode`.
+
+**Acceptance criteria:**
+- [ ] 8.11 All 8.x tests pass.
+- [ ] 8.12 No references to `SensorRateLevel` or `rateLevel` remain in non-test production code.
+- [ ] 8.13 An on-device profile written by `v0.10.0-rc.1` loads without data loss into the new build.
+
+---
+
+## 9. Ticket: Policy + service register from `SamplingRate` (Phase C)
+**Goal:** make `planRegistrations` / `shouldRegister` / `shouldWrite` consume `SamplingRate`, and have `SensorRecordingService.registerListener` pass the derived `samplingPeriodUs`.
+
+- [ ] 9.1 RED: update `planRegistrations`-based tests so a profile with gyroscope `samplingRate = Hz(50)` plans a registration whose `samplingPeriodUs` is `20_000`.
+- [ ] 9.2 RED: assert that `samplingRate = Off` (with any combination of `enabled` / `visibleOnGraph`) produces no plan entry for that sensor.
+- [ ] 9.3 RED: assert `samplingRate = Auto` plans `samplingPeriodUs = SensorManager.SENSOR_DELAY_NORMAL`.
+- [ ] 9.4 GREEN: refactor `shouldRegister(setting)` to `setting.samplingRate != Off && (setting.enabled || setting.visibleOnGraph)`.
+- [ ] 9.5 GREEN: refactor `planRegistrations(profile, probe)` to return `(sensor, samplingPeriodUs: Int)` pairs derived via `setting.samplingRate.toSamplingPeriodUs()`.
+- [ ] 9.6 GREEN: update `SensorRecordingService.registerSensorsFromProfile` to call `sensorManager.registerListener(this, sensor, samplingPeriodUs, MAX_REPORT_LATENCY_US)`.
+- [ ] 9.7 REFACTOR: drop the now-unused `Int?`-returning enum helper.
+
+**Acceptance criteria:**
+- [ ] 9.8 All 9.x tests pass.
+- [ ] 9.9 No call site passes a hardware-relative `SensorManager.SENSOR_DELAY_*` constant except the one inside `SamplingRate.Auto.toSamplingPeriodUs()`.
+
+---
+
+## 10. Ticket: Config screen redesign — Enable + Show on graph + Off/Auto/Custom Hz (Phase C)
+**Goal:** replace the 4-level rate spinner with the `Off / Auto / Custom Hz` selector and the single Enable interaction.
+
+- [ ] 10.1 RED: extend `SensorCaptureConfigState` test suite to cover:
+  - "toggling Enable from off→on with `samplingRate = Off` defaults `samplingRate` to `Auto` in the working copy"
+  - "selecting Custom + typing `50` produces `samplingRate = Hz(50)` in the working copy"
+  - "typing `0`, `-3`, or `abc` in the Custom field marks the row invalid and Save is disabled"
+  - "selecting `Off` clears the inline error and re-enables Save"
+- [ ] 10.2 RED: extend `ConfigRowStateTest` so the Unavailable row asserts disabled state across the new three controls (Enable checkbox, Show-on-graph checkbox, rate selector with Custom Hz input).
+- [ ] 10.3 GREEN: update the row layout: Enable checkbox + indented Show-on-graph checkbox + rate selector with three options (`Off`, `Auto`, `Custom`); when `Custom` is selected, reveal an integer input field bound to the row's working-copy `Hz` value.
+- [ ] 10.4 GREEN: `SensorCaptureConfigViewModel` (and its headless `State`):
+  - on Enable off→on with `samplingRate == Off`, set `samplingRate = Auto`.
+  - on selecting `Custom`, default the input field to the row's current `Hz.value` if present, otherwise `Auto`'s nominal `5` Hz (placeholder); a non-positive / non-integer input marks the row invalid and disables Save.
+  - on selecting `Off`, set `samplingRate = Off` and clear any inline error.
+- [ ] 10.5 GREEN: remove the "Normal / UI / Game / Fastest" labels from the layout XML and string resources.
+- [ ] 10.6 GREEN: update the absent-sensor row's `buildRowState` to disable the new controls (Enable, Show-on-graph, the rate selector, and the Custom Hz input).
+- [ ] 10.7 REFACTOR: extract the rate-selector subview into a `RateSelectorBinder` for unit-level UI logic isolation.
+
+**Acceptance criteria:**
+- [ ] 10.8 All 10.x tests pass.
+- [ ] 10.9 Enabling a previously-off sensor results in `samplingRate = Auto` without a second user interaction.
+- [ ] 10.10 Custom Hz selection persists across screen reopen and across app restart (covered transitively by ticket 8's round-trip).
+
+---
+
+## 11. Ticket: Live graph per-band actual delivered rate label (Phase C)
+**Goal:** display the rolling delivered rate per band so users can see why different sensors look different.
+
+- [ ] 11.1 RED: write `LiveGraphRateLabelTest` covering `computeRollingHz(samples)` — pure JVM:
+  - "0 or 1 samples returns `null`"
+  - "samples spanning 1000 ms with 51 elements returns ~50.0 Hz (within ±0.5)"
+  - "samples with `spanMs <= 0` (clock anomaly) return `null`"
+- [ ] 11.2 RED: write `LiveGraphLabelFormatterTest` asserting `formatRateLabel(null) == "—"` and `formatRateLabel(48.7) == "~49 Hz"`.
+- [ ] 11.3 GREEN: implement `computeRollingHz(samples: List<SensorSample>): Double?` and `formatRateLabel(hz: Double?): String` in the same package as `LiveGraphView`.
+- [ ] 11.4 GREEN: in `LiveGraphView`, when drawing each band, render the sensor name and the formatted rate label (e.g. `"Accelerometer  ~48 Hz"`) at the band's top-left. No additional canvas operations on bands with fewer than 2 samples.
+- [ ] 11.5 REFACTOR: hoist label typeface/size to a `companion object` constant.
+
+**Acceptance criteria:**
+- [ ] 11.6 All 11.x tests pass.
+- [ ] 11.7 The rate label updates at the same cadence as the rest of the band (≤20 Hz, gated by `LIVE_STREAM_COALESCE_MS`).
+
+---
+
+## 12. Ticket: Amendment validation + on-device manual checklist (Phase C)
+**Goal:** confirm the amendment is internally consistent and behaves as specified on a real device.
+
+- [ ] 12.1 Run `openspec validate update-sensor-logger-config-and-graph --strict` and resolve issues.
+- [ ] 12.2 `grep -rn "SensorRateLevel\\|rateLevel" android/app/src/main/` returns zero non-test hits.
+- [ ] 12.3 Run `just test` (Docker) — all unit tests pass.
+- [ ] 12.4 Run `just build` (Docker) — debug APK builds cleanly.
+- [ ] 12.5 Manual on-device sanity: with `v0.10.0-rc.1` profile present on disk (a sensor was set to Game), launch the new build and verify (a) the first-launch dialog appears once, (b) the migrated sensor displays `Custom + 50` in the config screen.
+- [ ] 12.6 Manual on-device sanity: enable light, proximity, pressure, gravity, and linear acceleration; record 30 s; verify the live graph shows distinct `~N Hz` labels per band reflecting the visibly different cadences.
+- [ ] 12.7 Manual on-device sanity: enable a previously-off sensor with a single tap and verify it begins recording at `Auto` rate without a second interaction; switch it to `Custom + 100` and verify the next session's live graph label reads near `~100 Hz`.
+
+**Acceptance criteria:**
+- [ ] 12.8 `openspec validate` passes strict on the amended change.
+- [ ] 12.9 `just test` passes.
+- [ ] 12.10 `just build` passes.
+- [ ] 12.11 Manual checks 12.5 – 12.7 succeed and are noted in the rc.2 release notes.

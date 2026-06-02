@@ -15,9 +15,10 @@ The v1 sensor logger records every available sensor at `SENSOR_DELAY_NORMAL` wit
 - **NON-GOAL:** Historical playback of completed sessions on the live graph. The graph is live-only in this change; replay is a separate future change.
 
 ## Phasing
-The change is delivered in two strictly ordered phases inside a single openspec change:
+The change is delivered in three strictly ordered phases inside a single openspec change:
 - **Phase A — capture configuration (tickets 0–2, 4, 6).** `RecordingProfile`, DataStore persistence, service registration becoming config-driven, the config screen, the Start-button gate. Ships independently as a working improvement.
 - **Phase B — live graph (tickets 3, 5).** Live sample stream side channel, `LiveGraphView`, `SensorLiveGraphActivity`. Builds on the live-stream additions in Phase A's service work.
+- **Phase C — rate UX amendment (tickets 8–12, EXEC-004).** Post-`v0.10.0-rc.1` on-device feedback: the four hardware-relative levels (Normal/UI/Game/Fastest) are opaque to users and different sensors visibly deliver at different rates regardless of the chosen level. Replace `SensorRateLevel` with a `SamplingRate` sum type (`Off | Auto | Hz(Int)`), simplify the config row to a single Enable interaction (with separate "Show on graph" and a `Off / Auto / Custom Hz` rate selector that defaults to `Auto` on enable), surface the actual delivered rate per band on the live graph as a `~N Hz` annotation, and migrate the persisted `<NAME>_rate` strings (legacy values are accepted on read and rewritten in the new `AUTO` / `HZ:<n>` encoding on next save). Bookkeeping key bumps from `seen_capture_defaults_dialog_v2` to `_v3` so existing users get a one-time explainer.
 
 ## Impact
 - Affected specs:

@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Multi-sensor registration with FIFO batching
-The system SHALL register only the sensors enabled in the user's persisted `RecordingProfile`. A sensor is considered "to register" if `(setting.enabled || setting.visibleOnGraph) && setting.rateLevel != OFF`. Each registered sensor SHALL be registered with `SensorManager` at the rate level configured in the profile (mapped to `SENSOR_DELAY_NORMAL` / `SENSOR_DELAY_UI` / `SENSOR_DELAY_GAME` / `SENSOR_DELAY_FASTEST`) and with a 5-second FIFO batch window (`maxReportLatencyUs = 5_000_000L`). Sensors not present on the device SHALL be silently skipped even if enabled in the profile. The profile is read once at `startRecording()` and frozen as a session-scoped snapshot (see "Session-frozen profile snapshot"). It SHALL NOT change for the duration of an in-flight session, even if the user updates the profile in DataStore mid-session. The service SHALL assume the UI layer has gated the Start action so that `startRecording()` is never called with an empty registered set; if called with an empty set anyway the service SHALL stop itself immediately without creating a session row.
+The system SHALL register only the sensors enabled in the user's persisted `RecordingProfile`. A sensor is considered "to register" if `(setting.enabled || setting.visibleOnGraph) && setting.samplingRate != Off`. Each registered sensor SHALL be registered with `SensorManager` at the `samplingPeriodUs` derived from its `SamplingRate` — `Auto` SHALL map to `SensorManager.SENSOR_DELAY_NORMAL` (200_000 µs) and `Hz(N)` SHALL map to `1_000_000 / N` µs (Android best-effort; the actual delivered rate may differ and is surfaced on the live graph per §Live graph screen) — with a 5-second FIFO batch window (`maxReportLatencyUs = 5_000_000L`). Sensors not present on the device SHALL be silently skipped even if enabled in the profile. The profile is read once at `startRecording()` and frozen as a session-scoped snapshot (see "Session-frozen profile snapshot"). It SHALL NOT change for the duration of an in-flight session, even if the user updates the profile in DataStore mid-session. The service SHALL assume the UI layer has gated the Start action so that `startRecording()` is never called with an empty registered set; if called with an empty set anyway the service SHALL stop itself immediately without creating a session row.
 
 #### Scenario: Only profile-enabled sensors register
 - **GIVEN** the user's profile enables accelerometer and gyroscope and disables all other sensors
@@ -10,16 +10,22 @@ The system SHALL register only the sensors enabled in the user's persisted `Reco
 - **AND** no other sensor is registered with `SensorManager`
 
 #### Scenario: Visualize-only sensor is registered but excluded from writes
-- **GIVEN** the user's profile sets magnetometer to `enabled = false, visibleOnGraph = true, rateLevel = NORMAL`
+- **GIVEN** the user's profile sets magnetometer to `enabled = false, visibleOnGraph = true, samplingRate = Auto`
 - **WHEN** recording starts
 - **THEN** magnetometer is registered with `SensorManager`
 - **AND** magnetometer events do not appear in the in-memory write buffer
 - **AND** magnetometer events do appear in the live sample stream
 
-#### Scenario: Per-sensor rate is honored
-- **GIVEN** the profile enables accelerometer at `rateLevel = GAME`
+#### Scenario: Per-sensor Auto rate maps to SENSOR_DELAY_NORMAL
+- **GIVEN** the profile enables accelerometer at `samplingRate = Auto`
 - **WHEN** `registerListener` is called for accelerometer
-- **THEN** the delay argument equals `SensorManager.SENSOR_DELAY_GAME`
+- **THEN** the `samplingPeriodUs` argument equals `SensorManager.SENSOR_DELAY_NORMAL`
+
+#### Scenario: Per-sensor Hz rate maps to the inverse-frequency period
+- **GIVEN** the profile enables gyroscope at `samplingRate = Hz(50)`
+- **WHEN** `registerListener` is called for gyroscope
+- **THEN** the `samplingPeriodUs` argument equals `1_000_000 / 50` (i.e. 20_000 µs)
+- **AND** the actual delivered rate may differ — Android's `samplingPeriodUs` is best-effort and the live graph surfaces the observed rate
 
 #### Scenario: Absent sensor skipped silently
 - **GIVEN** the device has no barometer (`TYPE_PRESSURE`) and the profile enables pressure

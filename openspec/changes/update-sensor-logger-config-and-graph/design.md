@@ -12,9 +12,20 @@ The v1 sensor logger is a write-only pipeline: hardware FIFO → callback → in
 
 **Non-Goals**
 - Replay of historical sessions on the graph (deferred).
-- Custom sampling rates (only Android's four standard `SENSOR_DELAY_*` levels plus "Off").
 - Cross-session profile presets / import-export.
 - Adaptive rate (rate auto-tuned by available battery).
+
+> **AMENDMENT EXEC-004** (post-`v0.10.0-rc.1` on-device feedback):
+> "Custom sampling rates" was previously a Non-Goal. On-device testing
+> showed that (a) the named hardware-relative levels are opaque to users,
+> (b) different sensors visibly deliver at different rates even when set
+> to the same level, and (c) users want a single "Enable" interaction
+> per sensor rather than a 3-control row. Amendment removes the
+> Non-Goal, replaces the enum with a `SamplingRate` sum type, simplifies
+> the config row, and adds a per-band actual-rate label to the live
+> graph. See Decisions §"SamplingRate sum type with backward-compat"
+> and §"Per-band actual delivered rate label". Implemented by tickets
+> 8–12 in `tasks.md`.
 
 ## Decisions
 
@@ -23,13 +34,13 @@ The v1 sensor logger is a write-only pipeline: hardware FIFO → callback → in
 
 ```
 booleanPreferencesKey("<sensorTypeName>_enabled")  // e.g. "ACCELEROMETER_enabled"
-stringPreferencesKey ("<sensorTypeName>_rate")     // SensorRateLevel.name: "OFF"|"NORMAL"|"UI"|"GAME"|"FASTEST"
+stringPreferencesKey ("<sensorTypeName>_rate")     // SamplingRate encoding: "OFF"|"AUTO"|"HZ:<n>" (legacy "NORMAL"|"UI"|"GAME"|"FASTEST" accepted on read, rewritten on next save)
 booleanPreferencesKey("<sensorTypeName>_visible")
 ```
 
 Plus one bookkeeping key:
 ```
-booleanPreferencesKey("seen_capture_defaults_dialog_v2")
+booleanPreferencesKey("seen_capture_defaults_dialog_v3")
 ```
 
 `RecordingProfileStore.flow` reconstructs the `RecordingProfile` by reading the three keys per known `SensorType`, applying `RecordingProfile.Default` for any sensor whose keys are absent. `update(profile)` writes all three keys per sensor in a single `edit { ... }` transaction.
@@ -75,14 +86,14 @@ The write path filters events against `sessionProfile.value`'s `enabled` flags. 
 - One `StateFlow` per sensor — rejected: more boilerplate; a single map is sufficient and atomic.
 
 ### Decision: "Visualize without record" is a first-class mode
-**What:** A sensor with `enabled = false, visibleOnGraph = true, rateLevel != OFF` is still registered with `SensorManager` (so the live stream fills), but its events are filtered out of the in-memory write buffer (via the session-frozen `enabled` check).
+**What:** A sensor with `enabled = false, visibleOnGraph = true, samplingRate != Off` is still registered with `SensorManager` (so the live stream fills), but its events are filtered out of the in-memory write buffer (via the session-frozen `enabled` check).
 
 **Why:** The user explicitly asked for independent visualize / record selection. Tying them together would force users to commit a sensor to disk just to glance at it.
 
 **Trade-off:** Registering a sensor for visualization costs battery even when not recording. This is acceptable because the live graph activity is foreground-only and the user has opted in explicitly.
 
 ### Decision: Empty-profile Start is rejected at the UI layer
-**What:** `SensorLoggerActivity` observes the current profile; if no sensor has `(enabled || visibleOnGraph) && rateLevel != OFF`, the Start button is disabled and shows a hint pointing to "Configure capture". The service is never called with an empty registration set, so it does not need an empty-profile guard.
+**What:** `SensorLoggerActivity` observes the current profile; if no sensor has `(enabled || visibleOnGraph) && samplingRate != Off`, the Start button is disabled and shows a hint pointing to "Configure capture". The service is never called with an empty registration set, so it does not need an empty-profile guard.
 
 **Why:** UI-layer gating is simpler and gives the user immediate, actionable feedback. The alternative (let the service start, show a transient notification, self-stop) creates an empty session row, a foreground notification flicker, and a contradictory state with the existing v1 "service starts on tap" guarantee.
 
@@ -94,6 +105,53 @@ The write path filters events against `sessionProfile.value`'s `enabled` flags. 
 **Empty / singleton window:** when a sensor's ring buffer holds 0 or 1 samples, the band draws a flat placeholder line at the band's vertical midpoint until ≥2 samples are present (no division-by-zero in auto-scale).
 
 **Trade-off:** No built-in pinch-to-zoom or pan. Not needed for a live-only view that auto-scrolls the visible window.
+
+### Decision: `SamplingRate` sum type with backward-compat (amendment EXEC-004)
+**What:** Replace `enum SensorRateLevel { OFF, NORMAL, UI, GAME, FASTEST }` with a sealed type:
+
+```kotlin
+sealed class SamplingRate {
+    object Off : SamplingRate()
+    object Auto : SamplingRate()                       // = SENSOR_DELAY_NORMAL
+    data class Hz(val value: Int) : SamplingRate()     // value > 0
+}
+
+fun SamplingRate.toSamplingPeriodUs(): Int? = when (this) {
+    Off       -> null
+    Auto      -> SensorManager.SENSOR_DELAY_NORMAL     // 200_000 µs
+    is Hz     -> 1_000_000 / value                     // Android best-effort
+}
+```
+
+The persisted `<NAME>_rate: String` key stays. Encoding extends to: `"OFF"`, `"AUTO"`, `"HZ:<n>"`. Legacy values are accepted on read and rewritten in the new form on the next save: `OFF→Off`, `NORMAL→Auto`, `UI→Hz(16)`, `GAME→Hz(50)`, `FASTEST→Hz(200)` (numbers chosen to match each level's nominal Android Hz target). The bookkeeping key is bumped to `seen_capture_defaults_dialog_v3` so existing `_v2`-acknowledged users get a one-time explainer for the new selector.
+
+**Why:** A single integer Hz target is what users actually want to express; the four hardware-relative levels are a leaky abstraction that varied wildly between sensors. `Auto` preserves the "just turn it on and don't think about it" affordance — the most common path stays one toggle wide. `Hz(N)` enables power users without adding a parallel adaptive-rate concept.
+
+**Alternatives considered:**
+- Add only a 5th "Custom" enum entry with an associated number — rejected: forces the enum to grow over time and bakes the old hardware-relative names into the data model forever.
+- Keep the four levels in the UI; expose Hz only via a hidden developer toggle — rejected: still requires per-sensor decision-making in the common case; the named levels remain opaque.
+
+**Trade-off:** `Hz(N)` is a *target*; Android's `samplingPeriodUs` is best-effort. The live-graph actual-rate label (next decision) makes this observable rather than mysterious.
+
+### Decision: Per-band actual delivered rate label (amendment EXEC-004)
+**What:** `LiveGraphView` adds a small `~N Hz` annotation next to each band's sensor-name label. The value is a rolling average computed from the visible window:
+
+```kotlin
+fun computeRollingHz(samples: List<SensorSample>): Double? =
+    if (samples.size < 2) null
+    else {
+        val spanMs = samples.last().elapsedMs - samples.first().elapsedMs
+        if (spanMs <= 0) null else (samples.size - 1).toDouble() * 1000.0 / spanMs
+    }
+```
+
+Updated on every `liveStream` emission (≤20 Hz alongside the existing redraw — no extra render cost).
+
+**Why:** Honesty over control. Light, proximity, pressure, and motion sensors all deliver at physically different cadences regardless of what the user requests; without surfacing the truth users assume the app is broken or the selector is ignored. A 4-character annotation is the smallest possible disclosure that resolves the confusion.
+
+**Alternatives considered:**
+- Show *requested* Hz next to the *actual* Hz — rejected for v1: doubles the visual noise and the requested value is already on the config screen.
+- Histogram of inter-sample gaps — rejected: too much UI for too little insight.
 
 ## Risks / Trade-offs
 
@@ -112,7 +170,8 @@ The write path filters events against `sessionProfile.value`'s `enabled` flags. 
 
 - **Unit tests (JVM, no Android dependencies):**
   - `RecordingProfile.Default` contents.
-  - `SensorRateLevel.toSensorManagerDelay()` mapping.
+  - `SamplingRate.toSamplingPeriodUs()` mapping (`Off → null`, `Auto → SENSOR_DELAY_NORMAL`, `Hz(n) → 1_000_000 / n`).
+  - Legacy `<NAME>_rate` string decode: `OFF→Off`, `NORMAL→Auto`, `UI→Hz(16)`, `GAME→Hz(50)`, `FASTEST→Hz(200)`; round-trip rewrite to new `AUTO`/`HZ:<n>` form on next save.
   - `RecordingProfileStore` flattening / unflattening round-trip with an in-memory `TestDataStore`.
   - `FixedSizeRingBuffer` append / overflow / snapshot.
   - Coalescing actor: 1 000 appends in <50 ms → ≤1 emission.
@@ -132,7 +191,7 @@ The write path filters events against `sessionProfile.value`'s `enabled` flags. 
 This change ships after `add-sensor-logger-app` is archived. On first launch with the new code:
 1. `RecordingProfileStore` reads the DataStore file. If any required key is absent for a given sensor, the default for that sensor is used (effectively yielding `RecordingProfile.Default` on first run).
 2. No Room migration is needed. Existing recorded sessions are untouched.
-3. The bookkeeping key `seen_capture_defaults_dialog_v2` is checked. If `false` or absent, `SensorLoggerActivity` shows a one-time **dialog** (not toast) explaining the new default-record set with a button that opens `SensorCaptureConfigActivity`. The key is set to `true` when the dialog is dismissed.
+3. The bookkeeping key `seen_capture_defaults_dialog_v3` is checked. If `false` or absent, `SensorLoggerActivity` shows a one-time **dialog** (not toast) explaining the new `Enable + Auto / custom Hz` selector (amendment EXEC-004) with a button that opens `SensorCaptureConfigActivity`. The key is set to `true` when the dialog is dismissed. The legacy `_v2` key is left alone and ignored.
 4. Old behavior (record everything) is gone — this is the BREAKING change.
 
 Rollback: revert the APK. The DataStore file is left behind but ignored by the v1 service.

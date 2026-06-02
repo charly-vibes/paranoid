@@ -1,18 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Recording profile persistence
-The system SHALL persist a `RecordingProfile` — a map from `SensorType` to `{enabled: Boolean, rateLevel: SensorRateLevel, visibleOnGraph: Boolean}` — using `androidx.datastore.preferences` in a single preferences file named `sensor_logger_profile.preferences_pb`. Because DataStore Preferences only supports primitive types and `Set<String>`, each `SensorType` SHALL be flattened to exactly three primitive keys: `<sensorTypeName>_enabled: Boolean`, `<sensorTypeName>_rate: String` (storing `SensorRateLevel.name`), and `<sensorTypeName>_visible: Boolean`. Reads SHALL reconstruct the `RecordingProfile` by reading the three keys per known `SensorType` and applying `RecordingProfile.Default` for any sensor whose keys are absent. Writes SHALL set all three keys for all known sensor types in a single `edit { }` transaction. The profile SHALL survive process death and app reinstall-from-backup. No Room schema migration is required.
+The system SHALL persist a `RecordingProfile` — a map from `SensorType` to `{enabled: Boolean, samplingRate: SamplingRate, visibleOnGraph: Boolean}` — using `androidx.datastore.preferences` in a single preferences file named `sensor_logger_profile.preferences_pb`. Because DataStore Preferences only supports primitive types and `Set<String>`, each `SensorType` SHALL be flattened to exactly three primitive keys: `<sensorTypeName>_enabled: Boolean`, `<sensorTypeName>_rate: String` (encoded as `"OFF"`, `"AUTO"`, or `"HZ:<n>"` where `<n>` is a positive integer), and `<sensorTypeName>_visible: Boolean`. Reads SHALL reconstruct the `RecordingProfile` by reading the three keys per known `SensorType` and applying `RecordingProfile.Default` for any sensor whose keys are absent. Writes SHALL set all three keys for all known sensor types in a single `edit { }` transaction, always emitting the new encoding. The profile SHALL survive process death and app reinstall-from-backup. No Room schema migration is required.
 
 #### Scenario: Default profile on first launch
 - **GIVEN** the app has never been launched and no DataStore file exists
 - **WHEN** any consumer first reads `RecordingProfileStore.flow`
-- **THEN** the emitted profile enables exactly accelerometer, gyroscope, and linear acceleration at `rateLevel = NORMAL` with `visibleOnGraph = true`
-- **AND** all other sensors have `enabled = false, visibleOnGraph = false, rateLevel = OFF`
+- **THEN** the emitted profile enables exactly accelerometer, gyroscope, and linear acceleration at `samplingRate = Auto` with `visibleOnGraph = true`
+- **AND** all other sensors have `enabled = false, visibleOnGraph = false, samplingRate = Off`
 
 #### Scenario: Profile update persists across process death
-- **GIVEN** the user has saved a profile that enables magnetometer at `rateLevel = GAME`
+- **GIVEN** the user has saved a profile that enables magnetometer at `samplingRate = Hz(50)`
 - **WHEN** the app process is killed and relaunched
-- **THEN** the next read of `RecordingProfileStore.flow` emits a profile with magnetometer `enabled = true, rateLevel = GAME`
+- **THEN** the next read of `RecordingProfileStore.flow` emits a profile with magnetometer `enabled = true, samplingRate = Hz(50)`
 
 #### Scenario: Flattened keys are written atomically
 - **GIVEN** a consumer calls `RecordingProfileStore.update(newProfile)`
@@ -37,6 +37,18 @@ The system SHALL persist a `RecordingProfile` — a map from `SensorType` to `{e
 - **WHEN** another component calls `RecordingProfileStore.update(...)` with a different profile
 - **THEN** the observing screen receives a new emission with the updated profile
 
+#### Scenario: Legacy rate-string encoding loads as the equivalent SamplingRate
+- **GIVEN** the DataStore file contains a legacy `<NAME>_rate` value (`"OFF"`, `"NORMAL"`, `"UI"`, `"GAME"`, or `"FASTEST"`) written by `v0.10.0-rc.1`
+- **WHEN** `RecordingProfileStore.flow` reads the file
+- **THEN** the corresponding `samplingRate` is `Off`, `Auto`, `Hz(16)`, `Hz(50)`, and `Hz(200)` respectively
+- **AND** the next `update(...)` call rewrites the key in the new encoding (`"OFF"` / `"AUTO"` / `"HZ:<n>"`)
+
+#### Scenario: Unknown rate-string value falls back to per-sensor default
+- **GIVEN** the DataStore file contains a malformed `<NAME>_rate` value (e.g. `"HZ:0"`, `"HZ:-5"`, `"HZ:abc"`, or `"NONSENSE"`)
+- **WHEN** `RecordingProfileStore.flow` reads the file
+- **THEN** that sensor's `samplingRate` resolves to `RecordingProfile.Default`'s value for the sensor
+- **AND** no exception is raised to the consumer
+
 ---
 
 ### Requirement: Profile read fallback on IO failure
@@ -58,7 +70,7 @@ The system SHALL persist a `RecordingProfile` — a map from `SensorType` to `{e
 ---
 
 ### Requirement: First-launch dialog bookkeeping key
-The system SHALL persist a single boolean key `seen_capture_defaults_dialog_v2` in the same DataStore preferences file. The key SHALL default to `false` (absent) and SHALL be set to `true` once the user dismisses the migration dialog described in the `sensor-logger-ui` spec. The store SHALL expose `hasSeenDefaultsDialog(): Flow<Boolean>` and `suspend fun markDefaultsDialogSeen()`. The key name is versioned (`_v2`) so a future change can introduce a new dialog with a fresh key without re-showing the v2 dialog to existing users.
+The system SHALL persist a single boolean key `seen_capture_defaults_dialog_v3` in the same DataStore preferences file. The key SHALL default to `false` (absent) and SHALL be set to `true` once the user dismisses the migration dialog described in the `sensor-logger-ui` spec. The store SHALL expose `hasSeenDefaultsDialog(): Flow<Boolean>` and `suspend fun markDefaultsDialogSeen()`. The key name is versioned (`_v3` after the rate-UX amendment, EXEC-004) so users who already acknowledged the previous `_v2` defaults dialog see the new selector explainer once. The legacy `_v2` key is left in place but ignored.
 
 #### Scenario: Key absent on first launch
 - **GIVEN** the DataStore file has just been created and no dialog has been dismissed
@@ -70,3 +82,9 @@ The system SHALL persist a single boolean key `seen_capture_defaults_dialog_v2` 
 - **WHEN** `markDefaultsDialogSeen()` returns
 - **THEN** subsequent emissions of `hasSeenDefaultsDialog()` are `true`
 - **AND** the value survives process restart
+
+#### Scenario: Existing _v2 acknowledgement does not suppress the new dialog
+- **GIVEN** the DataStore file contains `seen_capture_defaults_dialog_v2 = true` (set under `v0.10.0-rc.1`)
+- **WHEN** the user first launches a build that uses the `_v3` key
+- **THEN** `hasSeenDefaultsDialog()` emits `false`
+- **AND** the new explainer dialog is shown once
