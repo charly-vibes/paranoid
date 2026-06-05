@@ -59,7 +59,7 @@ sealed class SamplingRate {
          * Accepts the current encoding (`"OFF"`, `"AUTO"`, `"HZ:<n>"` with
          * `n > 0`) and the legacy encoding written by `v0.10.0-rc.1`
          * (`"NORMAL"`, `"UI"`, `"GAME"`, `"FASTEST"`). Returns `null` for any
-         * unparseable value so the caller substitutes the per-sensor default.
+         * unparsable value so the caller substitutes the per-sensor default.
          */
         fun decode(s: String): SamplingRate? = when {
             s == "OFF" -> Off
