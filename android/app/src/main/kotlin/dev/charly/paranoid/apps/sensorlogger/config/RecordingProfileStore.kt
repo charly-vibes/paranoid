@@ -19,13 +19,18 @@ import kotlinx.coroutines.flow.map
  *
  * Per-sensor settings are flattened into three primitive keys per [SensorType]:
  *   `<name>_enabled : Boolean`
- *   `<name>_rate    : String`  (one of [SensorRateLevel] names)
+ *   `<name>_rate    : String`  ([SamplingRate.encode] / [SamplingRate.decode])
  *   `<name>_visible : Boolean`
  *
  * Reads reconstruct a full profile by combining persisted keys with
- * [RecordingProfile.Default] as a per-sensor fallback. IO errors on the
- * upstream `Flow<Preferences>` emit [RecordingProfile.Default] rather than
- * propagating, so a corrupted preferences file does not crash callers.
+ * [RecordingProfile.Default] as a per-sensor fallback. Rate strings written by
+ * `v0.10.0-rc.1` (legacy `"NORMAL"`/`"UI"`/`"GAME"`/`"FASTEST"`) are accepted
+ * via [SamplingRate.decode] and rewritten in the new encoding on the next
+ * [update].
+ *
+ * IO errors on the upstream `Flow<Preferences>` emit [RecordingProfile.Default]
+ * rather than propagating, so a corrupted preferences file does not crash
+ * callers.
  */
 class RecordingProfileStore(
     private val dataStore: DataStore<Preferences>,
@@ -41,7 +46,7 @@ class RecordingProfileStore(
                 val keys = keysFor(type)
                 val setting = profile[type]
                 prefs[keys.enabled] = setting.enabled
-                prefs[keys.rate] = setting.rateLevel.name
+                prefs[keys.rate] = setting.samplingRate.encode()
                 prefs[keys.visible] = setting.visibleOnGraph
             }
         }
@@ -59,13 +64,10 @@ class RecordingProfileStore(
         val settings = SensorType.values().associateWith { type ->
             val keys = keysFor(type)
             val default = RecordingProfile.Default[type]
-            val rateName = prefs[keys.rate]
-            val rate = rateName?.let { name ->
-                runCatching { SensorRateLevel.valueOf(name) }.getOrNull()
-            } ?: default.rateLevel
+            val rate = prefs[keys.rate]?.let { SamplingRate.decode(it) } ?: default.samplingRate
             SensorCaptureSetting(
                 enabled = prefs[keys.enabled] ?: default.enabled,
-                rateLevel = rate,
+                samplingRate = rate,
                 visibleOnGraph = prefs[keys.visible] ?: default.visibleOnGraph,
             )
         }
@@ -105,8 +107,13 @@ class RecordingProfileStore(
     companion object {
         private const val TAG = "RecordingProfileStore"
 
-        /** Bookkeeping key for the v2 defaults migration dialog. */
+        /**
+         * Bookkeeping key for the rate-UX (amendment EXEC-004) defaults dialog.
+         * Bumped from `_v2` so users who already acknowledged the previous
+         * defaults-dialog see the new rate-selector explainer once.
+         * The legacy `_v2` key is left untouched (no migration write).
+         */
         val SEEN_DEFAULTS_DIALOG_KEY: Preferences.Key<Boolean> =
-            booleanPreferencesKey("seen_capture_defaults_dialog_v2")
+            booleanPreferencesKey("seen_capture_defaults_dialog_v3")
     }
 }

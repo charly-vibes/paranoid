@@ -194,7 +194,7 @@ class SensorRecordingService : Service(), SensorEventListener2 {
             val androidType = ANDROID_SENSOR_TYPE_OF[planned.type] ?: continue
             val sensor = sensorManager.getDefaultSensor(androidType) ?: continue
             val registered = sensorManager.registerListener(
-                this, sensor, planned.delay, BATCH_LATENCY_US,
+                this, sensor, planned.samplingPeriodUs, BATCH_LATENCY_US,
             )
             if (registered) {
                 _registeredSensors.add(planned.type)

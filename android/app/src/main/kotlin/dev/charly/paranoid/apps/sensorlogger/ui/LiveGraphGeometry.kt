@@ -90,6 +90,9 @@ fun computeChannelStrokes(
     for (i in 0 until n - 1) {
         val v1 = samples[i].values.getOrNull(channel) ?: continue
         val v2 = samples[i + 1].values.getOrNull(channel) ?: continue
+        // Skip segments touching a non-finite reading so no NaN/Inf coordinate
+        // reaches Canvas.drawLine (the min/max scan already ignores them).
+        if (!v1.isFinite() || !v2.isFinite()) continue
         out.add(
             StrokeSegment(
                 x1 = band.left + stepX * i,
@@ -136,3 +139,30 @@ fun filterVisibleSensors(
     val profile = sessionProfile ?: return emptyMap()
     return snapshot.filterKeys { type -> profile[type].visibleOnGraph }
 }
+
+/**
+ * Compute the rolling delivered rate over the visible window of [samples].
+ * Returns `null` when fewer than two samples are present or when the
+ * `elapsedMs` span is non-positive (clock anomaly), so the caller can render
+ * an em-dash placeholder rather than a misleading value.
+ *
+ * Note: `elapsedMs` is the sample's wall-clock arrival time. The live graph is
+ * a foreground, screen-on surface where the OS delivers continuously, so this
+ * tracks the true cadence in practice. If the OS batches a normally-slow
+ * sensor (e.g. pressure) the value can momentarily overstate the rate; this is
+ * acceptable for a glanceable label and never crashes.
+ */
+fun computeRollingHz(samples: List<SensorSample>): Double? {
+    if (samples.size < 2) return null
+    val spanMs = samples.last().elapsedMs - samples.first().elapsedMs
+    if (spanMs <= 0L) return null
+    return (samples.size - 1).toDouble() * 1000.0 / spanMs.toDouble()
+}
+
+/**
+ * Format a rolling-Hz value for the per-band label. Rounds to the nearest
+ * integer and prefixes with a tilde to make the "best-effort" / "observed"
+ * nature visible. Returns `"—"` (em-dash) for `null`.
+ */
+fun formatRateLabel(hz: Double?): String =
+    if (hz == null) "\u2014" else "~${Math.round(hz)} Hz"

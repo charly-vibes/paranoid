@@ -1,8 +1,8 @@
 package dev.charly.paranoid.apps.sensorlogger.ui
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,7 +24,7 @@ class StartGateTest {
         val enabledAccel = RecordingProfile(
             SensorType.values().associateWith { type ->
                 if (type == SensorType.ACCELEROMETER) {
-                    SensorCaptureSetting(true, SensorRateLevel.NORMAL, false)
+                    SensorCaptureSetting(true, SamplingRate.Auto, false)
                 } else {
                     RecordingProfile.OffSetting
                 }
@@ -41,7 +41,7 @@ class StartGateTest {
         val visualizeOnly = RecordingProfile(
             SensorType.values().associateWith { type ->
                 if (type == SensorType.GYROSCOPE) {
-                    SensorCaptureSetting(false, SensorRateLevel.GAME, true)
+                    SensorCaptureSetting(false, SamplingRate.Hz(50), true)
                 } else {
                     RecordingProfile.OffSetting
                 }
@@ -55,7 +55,7 @@ class StartGateTest {
         val enabledButRateOff = RecordingProfile(
             SensorType.values().associateWith { type ->
                 if (type == SensorType.ACCELEROMETER) {
-                    SensorCaptureSetting(true, SensorRateLevel.OFF, true)
+                    SensorCaptureSetting(true, SamplingRate.Off, true)
                 } else {
                     RecordingProfile.OffSetting
                 }

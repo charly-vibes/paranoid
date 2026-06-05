@@ -1,8 +1,8 @@
 package dev.charly.paranoid.apps.sensorlogger.ui
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,7 +17,7 @@ import org.junit.Test
  */
 class ConfigRowStateTest {
 
-    private val on = SensorCaptureSetting(true, SensorRateLevel.NORMAL, true)
+    private val on = SensorCaptureSetting(true, SamplingRate.Auto, true)
 
     @Test
     fun `present sensor row is fully enabled, opaque, with no suffix`() {

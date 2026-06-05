@@ -12,8 +12,8 @@ const val START_GATE_HINT: String = "No sensors enabled — open Configure captu
 /**
  * Predicate: with this [profile], will the service register at least one
  * sensor on start? Mirrors the registration policy exactly — a sensor with
- * `rateLevel = OFF` or both flags `false` is not registered, so a profile in
- * which EVERY sensor satisfies that condition produces an empty session.
+ * `samplingRate = Off` or both flags `false` is not registered, so a profile
+ * in which EVERY sensor satisfies that condition produces an empty session.
  *
  * The activity uses this to disable the Start button rather than letting the
  * user begin a no-op session.

@@ -2,7 +2,7 @@ package dev.charly.paranoid.apps.sensorlogger.ui
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.service.SensorSample
 import org.junit.Assert.assertEquals
@@ -109,9 +109,9 @@ class LiveGraphGeometryTest {
         )
         val frozen = RecordingProfile(
             mapOf(
-                SensorType.ACCELEROMETER to SensorCaptureSetting(true, SensorRateLevel.NORMAL, true),
-                SensorType.GYROSCOPE to SensorCaptureSetting(true, SensorRateLevel.NORMAL, false),
-                SensorType.MAGNETIC_FIELD to SensorCaptureSetting(false, SensorRateLevel.NORMAL, true),
+                SensorType.ACCELEROMETER to SensorCaptureSetting(true, SamplingRate.Auto, true),
+                SensorType.GYROSCOPE to SensorCaptureSetting(true, SamplingRate.Auto, false),
+                SensorType.MAGNETIC_FIELD to SensorCaptureSetting(false, SamplingRate.Auto, true),
             )
         )
         val filtered = filterVisibleSensors(snapshot, frozen)
@@ -138,8 +138,8 @@ class LiveGraphGeometryTest {
         )
         val frozen = RecordingProfile(
             mapOf(
-                SensorType.ACCELEROMETER to SensorCaptureSetting(true, SensorRateLevel.NORMAL, true),
-                SensorType.PRESSURE to SensorCaptureSetting(true, SensorRateLevel.NORMAL, false),
+                SensorType.ACCELEROMETER to SensorCaptureSetting(true, SamplingRate.Auto, true),
+                SensorType.PRESSURE to SensorCaptureSetting(true, SamplingRate.Auto, false),
             )
         )
         val initial = filterVisibleSensors(live, frozen)

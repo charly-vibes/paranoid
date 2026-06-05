@@ -1,8 +1,8 @@
 package dev.charly.paranoid.apps.sensorlogger.service
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -12,7 +12,7 @@ import org.junit.Test
 /**
  * Per amendment EXEC-003 on PARANOID-4vr: the write-path filter is the policy
  * primitive `shouldWrite`. With magnetometer in the session-frozen profile as
- * `enabled=false, visibleOnGraph=true, rateLevel=NORMAL`, magnetometer samples
+ * `enabled=false, visibleOnGraph=true, samplingRate=Auto`, magnetometer samples
  * must NOT reach the write buffer.
  */
 class ServiceVisualizeOnlyFilterTest {
@@ -23,11 +23,11 @@ class ServiceVisualizeOnlyFilterTest {
                 SensorType.MAGNETIC_FIELD ->
                     SensorCaptureSetting(
                         enabled = false,
-                        rateLevel = SensorRateLevel.NORMAL,
+                        samplingRate = SamplingRate.Auto,
                         visibleOnGraph = true,
                     )
                 SensorType.ACCELEROMETER ->
-                    SensorCaptureSetting(true, SensorRateLevel.NORMAL, true)
+                    SensorCaptureSetting(true, SamplingRate.Auto, true)
                 else -> RecordingProfile.OffSetting
             }
         }

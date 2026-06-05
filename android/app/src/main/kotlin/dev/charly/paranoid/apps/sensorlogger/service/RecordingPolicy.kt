@@ -1,6 +1,7 @@
 package dev.charly.paranoid.apps.sensorlogger.service
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 
@@ -9,11 +10,12 @@ import dev.charly.paranoid.apps.sensorlogger.model.SensorType
  * events for a sensor configured by [setting]?
  *
  * A sensor needs a listener whenever it is either recorded to the DB or shown
- * on the live graph, AND its rate is not [SensorRateLevel.OFF][dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel.OFF].
+ * on the live graph, AND its [SensorCaptureSetting.samplingRate] is not
+ * [SamplingRate.Off].
  */
 fun shouldRegister(setting: SensorCaptureSetting): Boolean =
     (setting.enabled || setting.visibleOnGraph) &&
-        setting.rateLevel.toSensorManagerDelay() != null
+        setting.samplingRate != SamplingRate.Off
 
 /**
  * Predicate: should an incoming sample for [type] be appended to the persisted
@@ -30,8 +32,15 @@ interface SensorPresenceProbe {
     fun hasSensor(type: SensorType): Boolean
 }
 
-/** One planned listener registration: which sensor, at which `SensorManager.SENSOR_DELAY_*`. */
-data class PlannedRegistration(val type: SensorType, val delay: Int)
+/**
+ * One planned listener registration: which sensor, at which
+ * `samplingPeriodUs` (the third argument to `SensorManager.registerListener`).
+ *
+ * For [SamplingRate.Auto] this equals `SensorManager.SENSOR_DELAY_NORMAL`
+ * (Android treats values 0..3 as the SENSOR_DELAY_* constants); for
+ * [SamplingRate.Hz] it equals `1_000_000 / value`.
+ */
+data class PlannedRegistration(val type: SensorType, val samplingPeriodUs: Int)
 
 /**
  * Compute the full set of listener registrations the service should request
@@ -48,6 +57,6 @@ fun planRegistrations(
         val setting = profile[type]
         if (!shouldRegister(setting)) return@mapNotNull null
         if (!probe.hasSensor(type)) return@mapNotNull null
-        val delay = setting.rateLevel.toSensorManagerDelay() ?: return@mapNotNull null
-        PlannedRegistration(type, delay)
+        val period = setting.samplingRate.toSamplingPeriodUs() ?: return@mapNotNull null
+        PlannedRegistration(type, period)
     }

@@ -4,8 +4,8 @@ import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 
 /**
  * Per-sensor capture settings: whether to record the sensor to the database,
- * the hardware delivery rate, and whether the sensor's samples should appear
- * on the live graph.
+ * the sampling rate to request from `SensorManager`, and whether the sensor's
+ * samples should appear on the live graph.
  *
  * `enabled = false && visibleOnGraph = true` is the "visualize only" mode: the
  * service registers the listener and feeds samples to the live ring buffer but
@@ -13,7 +13,7 @@ import dev.charly.paranoid.apps.sensorlogger.model.SensorType
  */
 data class SensorCaptureSetting(
     val enabled: Boolean,
-    val rateLevel: SensorRateLevel,
+    val samplingRate: SamplingRate,
     val visibleOnGraph: Boolean,
 )
 
@@ -32,14 +32,15 @@ data class RecordingProfile(
         /** Disabled-everywhere baseline used as a per-sensor fallback. */
         val OffSetting: SensorCaptureSetting = SensorCaptureSetting(
             enabled = false,
-            rateLevel = SensorRateLevel.OFF,
+            samplingRate = SamplingRate.Off,
             visibleOnGraph = false,
         )
 
         /**
          * Out-of-the-box capture profile: accelerometer, gyroscope, and linear
-         * acceleration enabled at `NORMAL` with `visibleOnGraph = true`. Every
-         * other sensor is fully off (matches [OffSetting]).
+         * acceleration enabled at [SamplingRate.Auto] with
+         * `visibleOnGraph = true`. Every other sensor is fully off (matches
+         * [OffSetting]).
          */
         val Default: RecordingProfile = RecordingProfile(
             SensorType.values().associateWith { type ->
@@ -49,7 +50,7 @@ data class RecordingProfile(
                     SensorType.LINEAR_ACCELERATION ->
                         SensorCaptureSetting(
                             enabled = true,
-                            rateLevel = SensorRateLevel.NORMAL,
+                            samplingRate = SamplingRate.Auto,
                             visibleOnGraph = true,
                         )
                     else -> OffSetting

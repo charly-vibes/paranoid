@@ -3,8 +3,8 @@ package dev.charly.paranoid.apps.sensorlogger.service
 import dev.charly.paranoid.apps.sensorlogger.config.FakePreferencesDataStore
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfileStore
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -36,7 +36,7 @@ class ServiceFrozenSnapshotTest {
         // mid-session: user edits the profile via the config screen
         val mutated = RecordingProfile(
             initial.settings.mapValues { (_, setting) ->
-                setting.copy(enabled = false, rateLevel = SensorRateLevel.OFF)
+                setting.copy(enabled = false, samplingRate = SamplingRate.Off)
             }
         )
         store.update(mutated)
@@ -61,7 +61,7 @@ class ServiceFrozenSnapshotTest {
             SensorType.values().associateWith { type ->
                 when (type) {
                     SensorType.MAGNETIC_FIELD ->
-                        SensorCaptureSetting(false, SensorRateLevel.NORMAL, true)
+                        SensorCaptureSetting(false, SamplingRate.Auto, true)
                     else -> RecordingProfile.OffSetting
                 }
             }
@@ -74,7 +74,7 @@ class ServiceFrozenSnapshotTest {
         val after = RecordingProfile(
             before.settings.toMutableMap().apply {
                 this[SensorType.MAGNETIC_FIELD] =
-                    SensorCaptureSetting(true, SensorRateLevel.NORMAL, true)
+                    SensorCaptureSetting(true, SamplingRate.Auto, true)
             }
         )
         store.update(after)

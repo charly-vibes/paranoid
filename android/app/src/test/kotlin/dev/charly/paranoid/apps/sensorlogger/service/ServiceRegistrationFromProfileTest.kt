@@ -1,8 +1,8 @@
 package dev.charly.paranoid.apps.sensorlogger.service
 
 import dev.charly.paranoid.apps.sensorlogger.config.RecordingProfile
+import dev.charly.paranoid.apps.sensorlogger.config.SamplingRate
 import dev.charly.paranoid.apps.sensorlogger.config.SensorCaptureSetting
-import dev.charly.paranoid.apps.sensorlogger.config.SensorRateLevel
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -14,12 +14,12 @@ class ServiceRegistrationFromProfileTest {
     }
 
     @Test
-    fun `profile enabling only accelerometer and gyroscope yields exactly two registrations`() {
+    fun `profile enabling only accelerometer and gyroscope at Auto yields two SENSOR_DELAY_NORMAL registrations`() {
         val profile = RecordingProfile(
             SensorType.values().associateWith { type ->
                 when (type) {
                     SensorType.ACCELEROMETER, SensorType.GYROSCOPE ->
-                        SensorCaptureSetting(true, SensorRateLevel.NORMAL, true)
+                        SensorCaptureSetting(true, SamplingRate.Auto, true)
                     else -> RecordingProfile.OffSetting
                 }
             }
@@ -30,20 +30,39 @@ class ServiceRegistrationFromProfileTest {
 
         assertEquals(
             listOf(
-                PlannedRegistration(SensorType.ACCELEROMETER, SensorRateLevel.DELAY_NORMAL),
-                PlannedRegistration(SensorType.GYROSCOPE, SensorRateLevel.DELAY_NORMAL),
+                PlannedRegistration(SensorType.ACCELEROMETER, SamplingRate.SENSOR_DELAY_NORMAL),
+                PlannedRegistration(SensorType.GYROSCOPE, SamplingRate.SENSOR_DELAY_NORMAL),
             ),
             plan,
         )
     }
 
     @Test
-    fun `sensor with rateLevel OFF is never registered even if enabled or visibleOnGraph`() {
+    fun `Hz custom rate plans the inverse-frequency samplingPeriodUs`() {
+        val profile = RecordingProfile(
+            SensorType.values().associateWith { type ->
+                when (type) {
+                    SensorType.GYROSCOPE ->
+                        SensorCaptureSetting(true, SamplingRate.Hz(50), true)
+                    else -> RecordingProfile.OffSetting
+                }
+            }
+        )
+        val probe = FakeProbe(SensorType.values().toSet())
+
+        assertEquals(
+            listOf(PlannedRegistration(SensorType.GYROSCOPE, 20_000)),
+            planRegistrations(profile, probe),
+        )
+    }
+
+    @Test
+    fun `samplingRate Off is never registered even if enabled or visibleOnGraph`() {
         val profile = RecordingProfile(
             SensorType.values().associateWith { type ->
                 when (type) {
                     SensorType.ACCELEROMETER ->
-                        SensorCaptureSetting(true, SensorRateLevel.OFF, true)
+                        SensorCaptureSetting(true, SamplingRate.Off, true)
                     else -> RecordingProfile.OffSetting
                 }
             }
@@ -59,7 +78,7 @@ class ServiceRegistrationFromProfileTest {
             SensorType.values().associateWith { type ->
                 when (type) {
                     SensorType.PRESSURE ->
-                        SensorCaptureSetting(true, SensorRateLevel.NORMAL, true)
+                        SensorCaptureSetting(true, SamplingRate.Auto, true)
                     else -> RecordingProfile.OffSetting
                 }
             }
@@ -75,7 +94,7 @@ class ServiceRegistrationFromProfileTest {
             SensorType.values().associateWith { type ->
                 when (type) {
                     SensorType.MAGNETIC_FIELD ->
-                        SensorCaptureSetting(false, SensorRateLevel.GAME, true)
+                        SensorCaptureSetting(false, SamplingRate.Hz(50), true)
                     else -> RecordingProfile.OffSetting
                 }
             }
@@ -83,7 +102,7 @@ class ServiceRegistrationFromProfileTest {
         val probe = FakeProbe(SensorType.values().toSet())
 
         assertEquals(
-            listOf(PlannedRegistration(SensorType.MAGNETIC_FIELD, SensorRateLevel.DELAY_GAME)),
+            listOf(PlannedRegistration(SensorType.MAGNETIC_FIELD, 20_000)),
             planRegistrations(profile, probe),
         )
     }

@@ -15,12 +15,12 @@ class RecordingProfileDefaultTest {
     )
 
     @Test
-    fun `default profile records accelerometer + gyroscope + linear acceleration at NORMAL and visible`() {
+    fun `default profile records accelerometer + gyroscope + linear acceleration at Auto and visible`() {
         for (type in recordedByDefault) {
             val setting = RecordingProfile.Default[type]
             assertTrue("$type must be enabled", setting.enabled)
             assertTrue("$type must be visibleOnGraph", setting.visibleOnGraph)
-            assertEquals("$type rate", SensorRateLevel.NORMAL, setting.rateLevel)
+            assertEquals("$type rate", SamplingRate.Auto, setting.samplingRate)
         }
     }
 
@@ -31,7 +31,7 @@ class RecordingProfileDefaultTest {
             val setting = RecordingProfile.Default[type]
             assertFalse("$type must be disabled", setting.enabled)
             assertFalse("$type must not be visibleOnGraph", setting.visibleOnGraph)
-            assertEquals("$type rate", SensorRateLevel.OFF, setting.rateLevel)
+            assertEquals("$type rate", SamplingRate.Off, setting.samplingRate)
         }
     }
 

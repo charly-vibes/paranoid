@@ -104,8 +104,9 @@ class LiveGraphView @JvmOverloads constructor(
                 }
             }
         }
+        val rateText = formatRateLabel(computeRollingHz(samples))
         canvas.drawText(
-            type.name,
+            "${sensorTypeLabel(type)}  $rateText",
             band.left + LABEL_PADDING_PX,
             band.top + LABEL_TEXT_SIZE_PX + LABEL_PADDING_PX,
             labelPaint,
