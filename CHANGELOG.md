@@ -2,6 +2,23 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.2] — 2026-06-05 _(pre-release)_
+
+### Sensor Logger — rate UX redesign (amendment EXEC-004, builds on rc.1)
+
+- **Rate model**: the four opaque hardware-relative levels (Normal / UI / Game / Fastest) are replaced by an explicit `SamplingRate` of **Off**, **Auto**, or a **custom integer Hz** target. `Auto` maps to `SENSOR_DELAY_NORMAL`; a custom `N` Hz registers at `1_000_000 / N` µs (Android best-effort).
+- **Simpler capture rows**: each sensor now has a single **Enable** toggle (enabling defaults the rate to `Auto` in one tap), a separate **Show on graph** toggle, and an **Off / Auto / Custom Hz** selector. The custom field rejects non-positive / non-integer input inline and disables Save until corrected.
+- **Live graph honesty**: each band label now shows the sensor name **and its actual delivered rate** as a rolling `~N Hz` average over the visible window (em-dash until ≥2 samples) — so it is obvious why light, proximity, pressure, gravity, and motion sensors visibly refresh at different cadences even when configured the same.
+- **Seamless upgrade from rc.1**: profiles saved by rc.1 are read transparently — legacy rate strings decode to their equivalents (`NORMAL → Auto`, `UI → 16 Hz`, `GAME → 50 Hz`, `FASTEST → 200 Hz`) and are rewritten in the new encoding on next save. A one-time dialog explains the new selector (bookkeeping key bumped `_v2 → _v3`).
+
+### Internal
+
+- `SensorRateLevel` enum removed in favor of the `SamplingRate` sum type (`Off | Auto | Hz(Int)`); `RecordingPolicy.planRegistrations` now yields `samplingPeriodUs` directly. New pure-Kotlin helpers `computeRollingHz` / `formatRateLabel` and the `RateMode` / `RateDraft` config-state model, all unit-tested. Hardening: non-finite sensor readings are skipped before reaching `Canvas.drawLine`; custom-Hz periods are floored at 1 µs.
+
+### Privacy invariant
+
+- Unchanged. All sensor data stays fully on-device.
+
 ## [v0.10.0-rc.1] — 2026-05-29 _(pre-release)_
 
 ### Sensor Logger — per-sensor capture configuration + live graph
