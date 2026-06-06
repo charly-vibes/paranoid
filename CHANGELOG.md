@@ -2,6 +2,19 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.3] — 2026-06-06 _(pre-release)_
+
+### Sensor Logger — session export & share
+
+- **Export recorded sessions**: the session detail screen gains an **Export / Share** action. Pick **CSV** or **JSON** and the file is handed to the Android share sheet (reuses the same `ShareHelper`/FileProvider plumbing as Netmap).
+  - **CSV**: header `elapsed_ms,sensor_type,x,y,z,accuracy` followed by one row per recorded event.
+  - **JSON**: session metadata (`session_id`, `started_at`, optional `ended_at`, `event_count`) plus an `events` array.
+- Serialization runs off the main thread; exported event ordering is now deterministic (`ORDER BY elapsedMs, id`).
+
+### Privacy invariant
+
+- Unchanged. Data only leaves the device when **you** explicitly share an export.
+
 ## [v0.10.0-rc.2] — 2026-06-05 _(pre-release)_
 
 ### Sensor Logger — rate UX redesign (amendment EXEC-004, builds on rc.1)
