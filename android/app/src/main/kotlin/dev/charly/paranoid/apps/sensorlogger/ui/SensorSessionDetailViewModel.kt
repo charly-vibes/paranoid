@@ -5,8 +5,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
+import dev.charly.paranoid.apps.sensorlogger.data.exportSensorCsv
+import dev.charly.paranoid.apps.sensorlogger.data.exportSensorJson
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.aggregateSensorCounts
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -34,6 +37,16 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
     private val _deleted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val deleted: SharedFlow<Unit> = _deleted.asSharedFlow()
 
+    enum class ExportFormat(val extension: String, val mimeType: String) {
+        CSV("csv", "text/csv"),
+        JSON("json", "application/json"),
+    }
+
+    data class ExportPayload(val content: String, val filename: String, val mimeType: String)
+
+    private val _exports = MutableSharedFlow<ExportPayload>(extraBufferCapacity = 1)
+    val exports: SharedFlow<ExportPayload> = _exports.asSharedFlow()
+
     private var sessionId: Long = -1L
 
     fun load(id: Long) {
@@ -57,6 +70,19 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
             if (session.endedAt != null) return@launch
             db.sensorSessionDao().update(session.copy(endedAt = System.currentTimeMillis()))
             load(sessionId)
+        }
+    }
+
+    fun requestExport(format: ExportFormat) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val session = db.sensorSessionDao().getById(sessionId) ?: return@launch
+            val events = db.sensorEventDao().getBySession(sessionId)
+            val content = when (format) {
+                ExportFormat.CSV -> exportSensorCsv(session, events)
+                ExportFormat.JSON -> exportSensorJson(session, events)
+            }
+            val filename = "sensor_session_${session.id}.${format.extension}"
+            _exports.emit(ExportPayload(content, filename, format.mimeType))
         }
     }
 

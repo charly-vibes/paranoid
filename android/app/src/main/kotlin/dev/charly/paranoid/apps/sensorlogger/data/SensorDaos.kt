@@ -34,7 +34,7 @@ interface SensorEventDao {
     @Insert
     suspend fun insertBatch(events: List<SensorEventEntity>)
 
-    @Query("SELECT * FROM sensor_events WHERE sessionId = :sessionId ORDER BY elapsedMs ASC")
+    @Query("SELECT * FROM sensor_events WHERE sessionId = :sessionId ORDER BY elapsedMs ASC, id ASC")
     suspend fun getBySession(sessionId: Long): List<SensorEventEntity>
 
     @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")

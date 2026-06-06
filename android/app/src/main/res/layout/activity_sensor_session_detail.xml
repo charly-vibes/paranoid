@@ -124,6 +124,19 @@
             android:visibility="gone" />
 
         <TextView
+            android:id="@+id/btn_export"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:text="Export / Share"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:background="#1E3A6B"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
             android:id="@+id/btn_delete"
             android:layout_width="match_parent"
             android:layout_height="48dp"

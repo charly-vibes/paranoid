@@ -9,6 +9,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dev.charly.paranoid.R
+import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.prettySensorName
@@ -29,6 +30,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
     private lateinit var totalEventsView: TextView
     private lateinit var breakdownView: TextView
     private lateinit var markClosedBtn: TextView
+    private lateinit var exportBtn: TextView
     private lateinit var deleteBtn: TextView
 
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
@@ -51,11 +53,13 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         totalEventsView = findViewById(R.id.tv_total_events)
         breakdownView = findViewById(R.id.tv_sensor_breakdown)
         markClosedBtn = findViewById(R.id.btn_mark_closed)
+        exportBtn = findViewById(R.id.btn_export)
         deleteBtn = findViewById(R.id.btn_delete)
 
         findViewById<TextView>(R.id.btn_back).setOnClickListener { finish() }
 
         markClosedBtn.setOnClickListener { viewModel.markAsClosed() }
+        exportBtn.setOnClickListener { showExportDialog() }
         deleteBtn.setOnClickListener { confirmDelete() }
 
         lifecycleScope.launch {
@@ -63,6 +67,11 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             viewModel.deleted.collect { finish() }
+        }
+        lifecycleScope.launch {
+            viewModel.exports.collect { payload ->
+                ShareHelper.share(this@SensorSessionDetailActivity, payload.content, payload.filename, payload.mimeType)
+            }
         }
 
         viewModel.load(sessionId)
@@ -106,6 +115,15 @@ class SensorSessionDetailActivity : AppCompatActivity() {
                     "%-22s %d".format(prettySensorName(type), count)
                 }
         }
+    }
+
+    private fun showExportDialog() {
+        val formats = SensorSessionDetailViewModel.ExportFormat.values()
+        val labels = formats.map { it.extension.uppercase() }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("Export as")
+            .setItems(labels) { _, which -> viewModel.requestExport(formats[which]) }
+            .show()
     }
 
     private fun confirmDelete() {
