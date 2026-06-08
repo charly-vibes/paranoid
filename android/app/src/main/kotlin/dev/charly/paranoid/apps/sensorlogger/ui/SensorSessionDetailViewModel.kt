@@ -4,18 +4,28 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
+import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFormat
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
-import dev.charly.paranoid.apps.sensorlogger.data.exportSensorCsv
-import dev.charly.paranoid.apps.sensorlogger.data.exportSensorJson
+import dev.charly.paranoid.apps.sensorlogger.data.estimateExportBytes
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvEvents
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvHeader
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEnd
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEvent
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonStart
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.aggregateSensorCounts
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.File
 
 class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -29,6 +39,21 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
         ) : State()
     }
 
+    /** Per-format size estimate shown in the export picker. */
+    data class FormatEstimate(val format: SensorExportFormat, val estimatedBytes: Long)
+
+    sealed class ExportState {
+        object Idle : ExportState()
+        data class Running(
+            val format: SensorExportFormat,
+            val writtenEvents: Long,
+            val totalEvents: Long,
+        ) : ExportState()
+
+        data class Ready(val file: File, val mimeType: String) : ExportState()
+        data class Failed(val message: String) : ExportState()
+    }
+
     private val db = ParanoidDatabase.getInstance(app)
 
     private val _state = MutableStateFlow<State>(State.Loading)
@@ -37,17 +62,11 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
     private val _deleted = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val deleted: SharedFlow<Unit> = _deleted.asSharedFlow()
 
-    enum class ExportFormat(val extension: String, val mimeType: String) {
-        CSV("csv", "text/csv"),
-        JSON("json", "application/json"),
-    }
-
-    data class ExportPayload(val content: String, val filename: String, val mimeType: String)
-
-    private val _exports = MutableSharedFlow<ExportPayload>(extraBufferCapacity = 1)
-    val exports: SharedFlow<ExportPayload> = _exports.asSharedFlow()
+    private val _exportState = MutableStateFlow<ExportState>(ExportState.Idle)
+    val exportState: StateFlow<ExportState> = _exportState
 
     private var sessionId: Long = -1L
+    private var exportJob: Job? = null
 
     fun load(id: Long) {
         sessionId = id
@@ -73,17 +92,105 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun requestExport(format: ExportFormat) {
-        viewModelScope.launch(Dispatchers.Default) {
-            val session = db.sensorSessionDao().getById(sessionId) ?: return@launch
-            val events = db.sensorEventDao().getBySession(sessionId)
-            val content = when (format) {
-                ExportFormat.CSV -> exportSensorCsv(session, events)
-                ExportFormat.JSON -> exportSensorJson(session, events)
-            }
-            val filename = "sensor_session_${session.id}.${format.extension}"
-            _exports.emit(ExportPayload(content, filename, format.mimeType))
+    /** Size estimates for each export format, for the picker dialog. */
+    fun estimates(totalEvents: Int): List<FormatEstimate> =
+        SensorExportFormat.values().map {
+            FormatEstimate(it, estimateExportBytes(it, totalEvents.toLong()))
         }
+
+    fun requestExport(format: SensorExportFormat) {
+        if (exportJob?.isActive == true) return
+        exportJob = viewModelScope.launch(Dispatchers.IO) {
+            val session = db.sensorSessionDao().getById(sessionId)
+            if (session == null) {
+                _exportState.value = ExportState.Failed("Session not found")
+                return@launch
+            }
+            if (session.endedAt == null) {
+                _exportState.value = ExportState.Failed("Close this session before exporting")
+                return@launch
+            }
+
+            val total = db.sensorEventDao().countForSessionLong(sessionId)
+            val dir = File(getApplication<Application>().cacheDir, "exports")
+            dir.mkdirs()
+            cleanStaleExports(dir)
+
+            val estimate = estimateExportBytes(format, total)
+            if (estimate + SPACE_MARGIN_BYTES > dir.usableSpace) {
+                _exportState.value = ExportState.Failed("Not enough free space for this export")
+                return@launch
+            }
+
+            val finalFile = File(dir, "sensor_session_${session.id}.${format.extension}")
+            val tmpFile = File(dir, "${finalFile.name}.tmp")
+            _exportState.value = ExportState.Running(format, 0, total)
+
+            var success = false
+            try {
+                tmpFile.bufferedWriter(bufferSize = 64 * 1024).use { writer ->
+                    var written = 0L
+                    var first = true
+                    var lastElapsed = Long.MIN_VALUE
+                    var lastId = Long.MIN_VALUE
+
+                    when (format) {
+                        SensorExportFormat.CSV -> writeSensorCsvHeader(writer)
+                        SensorExportFormat.JSON -> writeSensorJsonStart(session, total, writer)
+                    }
+
+                    while (true) {
+                        currentCoroutineContext().ensureActive()
+                        val page = db.sensorEventDao().getBySessionAfter(
+                            sessionId, lastElapsed, lastId, PAGE_SIZE,
+                        )
+                        if (page.isEmpty()) break
+
+                        when (format) {
+                            SensorExportFormat.CSV -> writeSensorCsvEvents(page, writer)
+                            SensorExportFormat.JSON -> page.forEach { e ->
+                                writeSensorJsonEvent(e, first, writer)
+                                first = false
+                            }
+                        }
+
+                        val last = page.last()
+                        lastElapsed = last.elapsedMs
+                        lastId = last.id
+                        written += page.size
+                        _exportState.value = ExportState.Running(format, written, total)
+
+                        if (page.size < PAGE_SIZE) break
+                    }
+
+                    if (format == SensorExportFormat.JSON) writeSensorJsonEnd(writer)
+                    currentCoroutineContext().ensureActive()
+                }
+
+                currentCoroutineContext().ensureActive()
+                if (finalFile.exists()) finalFile.delete()
+                check(tmpFile.renameTo(finalFile)) { "Could not finalize export file" }
+                success = true
+                _exportState.value = ExportState.Ready(finalFile, format.mimeType)
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) {
+                    _exportState.value = ExportState.Idle
+                    throw e
+                }
+                _exportState.value = ExportState.Failed(e.message ?: "Export failed")
+            } finally {
+                if (!success) tmpFile.delete()
+            }
+        }
+    }
+
+    fun cancelExport() {
+        exportJob?.cancel()
+    }
+
+    /** Called after a terminal state was handled; clears only that exact state. */
+    fun exportConsumed(consumed: ExportState) {
+        _exportState.update { current -> if (current === consumed) ExportState.Idle else current }
     }
 
     fun delete() {
@@ -91,5 +198,18 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
             db.sensorSessionDao().deleteById(sessionId)
             _deleted.tryEmit(Unit)
         }
+    }
+
+    private fun cleanStaleExports(dir: File) {
+        val cutoff = System.currentTimeMillis() - STALE_EXPORT_MS
+        dir.listFiles()?.forEach { f ->
+            if (f.lastModified() < cutoff) f.delete()
+        }
+    }
+
+    companion object {
+        private const val PAGE_SIZE = 4000
+        private const val SPACE_MARGIN_BYTES = 16L * 1024 * 1024 // 16 MB headroom
+        private const val STALE_EXPORT_MS = 24L * 60 * 60 * 1000 // 24h
     }
 }

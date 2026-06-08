@@ -37,8 +37,28 @@ interface SensorEventDao {
     @Query("SELECT * FROM sensor_events WHERE sessionId = :sessionId ORDER BY elapsedMs ASC, id ASC")
     suspend fun getBySession(sessionId: Long): List<SensorEventEntity>
 
+    /**
+     * Keyset-paginated fetch ordered by (elapsedMs, id). Pass
+     * `lastElapsedMs = Long.MIN_VALUE, lastId = Long.MIN_VALUE` for the first
+     * page. Avoids the growing-OFFSET scan cost on large sessions.
+     */
+    @Query(
+        "SELECT * FROM sensor_events WHERE sessionId = :sessionId " +
+            "AND (elapsedMs > :lastElapsedMs OR (elapsedMs = :lastElapsedMs AND id > :lastId)) " +
+            "ORDER BY elapsedMs ASC, id ASC LIMIT :limit"
+    )
+    suspend fun getBySessionAfter(
+        sessionId: Long,
+        lastElapsedMs: Long,
+        lastId: Long,
+        limit: Int,
+    ): List<SensorEventEntity>
+
     @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")
     suspend fun countForSession(sessionId: Long): Int
+
+    @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")
+    suspend fun countForSessionLong(sessionId: Long): Long
 
     @Query(
         "SELECT sensorType, COUNT(*) AS count FROM sensor_events " +

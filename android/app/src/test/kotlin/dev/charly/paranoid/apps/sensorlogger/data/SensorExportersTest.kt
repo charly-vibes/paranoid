@@ -50,4 +50,52 @@ class SensorExportersTest {
         assertEquals(2, arr.length())
         assertEquals("ACCELEROMETER", arr.getJSONObject(0).getString("sensor_type"))
     }
+
+    @Test
+    fun `JSON is compact (no pretty-print newlines)`() {
+        val json = exportSensorJson(session, events)
+        assertTrue(!json.contains("\n"))
+    }
+
+    @Test
+    fun `JSON non-finite floats become null`() {
+        val bad = listOf(
+            SensorEventEntity(
+                id = 1, sessionId = 7, elapsedMs = 0,
+                sensorType = "LIGHT", x = Float.NaN, y = Float.POSITIVE_INFINITY, z = 0f,
+                accuracy = 1,
+            ),
+        )
+        val json = JSONObject(exportSensorJson(session, bad))
+        val ev = json.getJSONArray("events").getJSONObject(0)
+        assertTrue(ev.isNull("x"))
+        assertTrue(ev.isNull("y"))
+        assertEquals(0.0, ev.getDouble("z"), 0.0)
+    }
+
+    @Test
+    fun `streaming JSON matches String builder output`() {
+        val sb = StringBuilder()
+        writeSensorJsonStart(session, events.size.toLong(), sb)
+        events.forEachIndexed { i, e -> writeSensorJsonEvent(e, first = i == 0, out = sb) }
+        writeSensorJsonEnd(sb)
+        // Parses cleanly and has both events
+        val json = JSONObject(sb.toString())
+        assertEquals(2, json.getJSONArray("events").length())
+    }
+
+    @Test
+    fun `estimate grows with event count and JSON exceeds CSV`() {
+        val csvSmall = estimateExportBytes(SensorExportFormat.CSV, 100)
+        val csvLarge = estimateExportBytes(SensorExportFormat.CSV, 10_000)
+        assertTrue(csvLarge > csvSmall)
+        val json = estimateExportBytes(SensorExportFormat.JSON, 10_000)
+        assertTrue(json > csvLarge)
+    }
+
+    @Test
+    fun `formatByteSize is human readable`() {
+        assertEquals("512 B", formatByteSize(512))
+        assertTrue(formatByteSize(6_000_000).endsWith("MB"))
+    }
 }

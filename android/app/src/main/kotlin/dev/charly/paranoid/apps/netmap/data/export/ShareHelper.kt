@@ -1,5 +1,6 @@
 package dev.charly.paranoid.apps.netmap.data.export
 
+import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.FileProvider
@@ -11,7 +12,11 @@ object ShareHelper {
         dir.mkdirs()
         val file = File(dir, filename)
         file.writeText(content)
+        shareFile(context, file, mimeType)
+    }
 
+    /** Share an already-written file (used for large streamed exports). */
+    fun shareFile(context: Context, file: File, mimeType: String) {
         val uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.fileprovider",
@@ -21,8 +26,10 @@ object ShareHelper {
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = mimeType
             putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TITLE, file.name)
+            clipData = ClipData.newUri(context.contentResolver, file.name, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Export $filename"))
+        context.startActivity(Intent.createChooser(intent, "Export ${file.name}"))
     }
 }

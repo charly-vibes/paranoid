@@ -3,14 +3,20 @@ package dev.charly.paranoid.apps.sensorlogger
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
+import dev.charly.paranoid.apps.sensorlogger.data.formatByteSize
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.prettySensorName
 import dev.charly.paranoid.apps.sensorlogger.ui.SensorSessionDetailViewModel
@@ -32,6 +38,11 @@ class SensorSessionDetailActivity : AppCompatActivity() {
     private lateinit var markClosedBtn: TextView
     private lateinit var exportBtn: TextView
     private lateinit var deleteBtn: TextView
+
+    private var totalEvents: Int = 0
+    private var progressDialog: AlertDialog? = null
+    private var progressBar: ProgressBar? = null
+    private var progressLabel: TextView? = null
 
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
@@ -69,8 +80,8 @@ class SensorSessionDetailActivity : AppCompatActivity() {
             viewModel.deleted.collect { finish() }
         }
         lifecycleScope.launch {
-            viewModel.exports.collect { payload ->
-                ShareHelper.share(this@SensorSessionDetailActivity, payload.content, payload.filename, payload.mimeType)
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.exportState.collect { renderExportState(it) }
             }
         }
 
@@ -92,6 +103,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         totalEvents: Int,
         bySensor: Map<SensorType, Int>,
     ) {
+        this.totalEvents = totalEvents
         startView.text = "Start: ${dateFmt.format(Date(session.startedAt))}"
         val ended = session.endedAt
         if (ended == null) {
@@ -118,12 +130,76 @@ class SensorSessionDetailActivity : AppCompatActivity() {
     }
 
     private fun showExportDialog() {
-        val formats = SensorSessionDetailViewModel.ExportFormat.values()
-        val labels = formats.map { it.extension.uppercase() }.toTypedArray()
+        val estimates = viewModel.estimates(totalEvents)
+        val labels = estimates.map { est ->
+            "${est.format.extension.uppercase()}  (~${formatByteSize(est.estimatedBytes)})"
+        }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Export as")
-            .setItems(labels) { _, which -> viewModel.requestExport(formats[which]) }
+            .setTitle("Export $totalEvents events as")
+            .setItems(labels) { _, which -> viewModel.requestExport(estimates[which].format) }
+            .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun renderExportState(state: SensorSessionDetailViewModel.ExportState) {
+        when (state) {
+            SensorSessionDetailViewModel.ExportState.Idle -> dismissProgress()
+            is SensorSessionDetailViewModel.ExportState.Running -> showProgress(state)
+            is SensorSessionDetailViewModel.ExportState.Ready -> {
+                dismissProgress()
+                ShareHelper.shareFile(this, state.file, state.mimeType)
+                viewModel.exportConsumed(state)
+            }
+            is SensorSessionDetailViewModel.ExportState.Failed -> {
+                dismissProgress()
+                Toast.makeText(this, state.message, Toast.LENGTH_LONG).show()
+                viewModel.exportConsumed(state)
+            }
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun showProgress(state: SensorSessionDetailViewModel.ExportState.Running) {
+        if (progressDialog == null) {
+            val pad = (24 * resources.displayMetrics.density).toInt()
+            val container = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(pad, pad, pad, pad)
+            }
+            val label = TextView(this).apply { setPadding(0, 0, 0, pad / 2) }
+            val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+                max = 100
+            }
+            container.addView(label)
+            container.addView(bar)
+            progressLabel = label
+            progressBar = bar
+            progressDialog = AlertDialog.Builder(this)
+                .setTitle("Exporting ${state.format.extension.uppercase()}")
+                .setView(container)
+                .setCancelable(false)
+                .setNegativeButton("Cancel") { _, _ -> viewModel.cancelExport() }
+                .create()
+            progressDialog?.show()
+        }
+        val pct = if (state.totalEvents > 0) {
+            ((state.writtenEvents * 100) / state.totalEvents).toInt()
+        } else 0
+        progressBar?.progress = pct
+        progressLabel?.text = "${state.writtenEvents} / ${state.totalEvents} events"
+    }
+
+    private fun dismissProgress() {
+        progressDialog?.dismiss()
+        progressDialog = null
+        progressBar = null
+        progressLabel = null
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        progressDialog?.dismiss()
+        progressDialog = null
     }
 
     private fun confirmDelete() {
