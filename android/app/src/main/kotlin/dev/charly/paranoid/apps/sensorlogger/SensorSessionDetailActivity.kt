@@ -3,8 +3,11 @@ package dev.charly.paranoid.apps.sensorlogger
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -15,7 +18,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.netmap.data.export.ShareHelper
+import dev.charly.paranoid.apps.sensorlogger.data.ExportSampling
+import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFormat
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
+import dev.charly.paranoid.apps.sensorlogger.data.estimateExportBytes
+import dev.charly.paranoid.apps.sensorlogger.data.estimateSampledCount
 import dev.charly.paranoid.apps.sensorlogger.data.formatByteSize
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.prettySensorName
@@ -40,9 +47,12 @@ class SensorSessionDetailActivity : AppCompatActivity() {
     private lateinit var deleteBtn: TextView
 
     private var totalEvents: Int = 0
+    private var bySensor: Map<SensorType, Int> = emptyMap()
+    private var sessionDurationMs: Long? = null
     private var progressDialog: AlertDialog? = null
     private var progressBar: ProgressBar? = null
     private var progressLabel: TextView? = null
+    private var configDialog: AlertDialog? = null
 
     private val dateFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 
@@ -104,6 +114,8 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         bySensor: Map<SensorType, Int>,
     ) {
         this.totalEvents = totalEvents
+        this.bySensor = bySensor
+        this.sessionDurationMs = session.endedAt?.let { it - session.startedAt }
         startView.text = "Start: ${dateFmt.format(Date(session.startedAt))}"
         val ended = session.endedAt
         if (ended == null) {
@@ -129,17 +141,91 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun showExportDialog() {
-        val estimates = viewModel.estimates(totalEvents)
-        val labels = estimates.map { est ->
-            "${est.format.extension.uppercase()}  (~${formatByteSize(est.estimatedBytes)})"
-        }.toTypedArray()
-        AlertDialog.Builder(this)
-            .setTitle("Export $totalEvents events as")
-            .setItems(labels) { _, which -> viewModel.requestExport(estimates[which].format) }
+        if (bySensor.isEmpty()) {
+            Toast.makeText(this, "Nothing to export", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val view = layoutInflater.inflate(R.layout.dialog_export_config, null)
+        val sensorContainer = view.findViewById<LinearLayout>(R.id.container_sensors)
+        val samplingSpinner = view.findViewById<Spinner>(R.id.spinner_sampling)
+        val formatSpinner = view.findViewById<Spinner>(R.id.spinner_format)
+        val estimateView = view.findViewById<TextView>(R.id.tv_estimate)
+
+        // Sensor checkboxes (default all checked), most-frequent first.
+        val sensors = bySensor.entries.sortedByDescending { it.value }.map { it.key }
+        val checks = LinkedHashMap<SensorType, CheckBox>()
+        for (type in sensors) {
+            val cb = CheckBox(this).apply {
+                text = "${prettySensorName(type)}  (${bySensor[type]})"
+                setTextColor(0xFFDDDDDD.toInt())
+                isChecked = true
+            }
+            checks[type] = cb
+            sensorContainer.addView(cb)
+        }
+
+        val samplingOptions = SAMPLING_PRESETS
+        samplingSpinner.adapter = spinnerAdapter(samplingOptions.map { it.first })
+        formatSpinner.adapter = spinnerAdapter(SensorExportFormat.values().map { it.extension.uppercase() })
+
+        fun selectedTypes(): Set<SensorType> =
+            checks.filterValues { it.isChecked }.keys
+
+        fun currentSampling(): ExportSampling =
+            samplingOptions[samplingSpinner.selectedItemPosition].second
+
+        fun currentFormat(): SensorExportFormat =
+            SensorExportFormat.values()[formatSpinner.selectedItemPosition]
+
+        fun refreshEstimate() {
+            val selected = selectedTypes()
+            if (selected.isEmpty()) {
+                estimateView.text = "Select at least one sensor"
+                return
+            }
+            val counts = selected.map { bySensor[it] ?: 0 }
+            val outEvents = estimateSampledCount(currentSampling(), counts, sessionDurationMs)
+            val bytes = estimateExportBytes(currentFormat(), outEvents)
+            estimateView.text = "≈ $outEvents events · ${formatByteSize(bytes)}"
+        }
+
+        checks.values.forEach { it.setOnCheckedChangeListener { _, _ -> refreshEstimate() } }
+        val onSelect = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = refreshEstimate()
+            override fun onNothingSelected(p: android.widget.AdapterView<*>?) = Unit
+        }
+        samplingSpinner.onItemSelectedListener = onSelect
+        formatSpinner.onItemSelectedListener = onSelect
+        refreshEstimate()
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Export session")
+            .setView(view)
+            .setPositiveButton("Export", null)
             .setNegativeButton("Cancel", null)
-            .show()
+            .create()
+        configDialog = dialog
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val selected = selectedTypes()
+                if (selected.isEmpty()) {
+                    Toast.makeText(this, "Select at least one sensor", Toast.LENGTH_SHORT).show()
+                } else {
+                    viewModel.requestExport(currentFormat(), selected, currentSampling())
+                    dialog.dismiss()
+                }
+            }
+        }
+        dialog.show()
     }
+
+    private fun spinnerAdapter(items: List<String>): ArrayAdapter<String> =
+        ArrayAdapter(this, android.R.layout.simple_spinner_item, items).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
 
     private fun renderExportState(state: SensorSessionDetailViewModel.ExportState) {
         when (state) {
@@ -183,10 +269,10 @@ class SensorSessionDetailActivity : AppCompatActivity() {
             progressDialog?.show()
         }
         val pct = if (state.totalEvents > 0) {
-            ((state.writtenEvents * 100) / state.totalEvents).toInt()
+            ((state.processedEvents * 100) / state.totalEvents).toInt()
         } else 0
         progressBar?.progress = pct
-        progressLabel?.text = "${state.writtenEvents} / ${state.totalEvents} events"
+        progressLabel?.text = "${state.processedEvents} / ${state.totalEvents} events"
     }
 
     private fun dismissProgress() {
@@ -200,6 +286,8 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         super.onDestroy()
         progressDialog?.dismiss()
         progressDialog = null
+        configDialog?.dismiss()
+        configDialog = null
     }
 
     private fun confirmDelete() {
@@ -220,5 +308,19 @@ class SensorSessionDetailActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_SESSION_ID = "session_id"
+
+        /** Downsampling presets shown in the export config spinner. */
+        private val SAMPLING_PRESETS: List<Pair<String, ExportSampling>> = listOf(
+            "All samples" to ExportSampling.All,
+            "1 of 2" to ExportSampling.EveryNth(2),
+            "1 of 5" to ExportSampling.EveryNth(5),
+            "1 of 10" to ExportSampling.EveryNth(10),
+            "1 of 50" to ExportSampling.EveryNth(50),
+            "Every 0.5 s" to ExportSampling.Interval(500),
+            "Every 1 s" to ExportSampling.Interval(1000),
+            "Every 2 s" to ExportSampling.Interval(2000),
+            "Every 5 s" to ExportSampling.Interval(5000),
+            "Every 10 s" to ExportSampling.Interval(10000),
+        )
     }
 }

@@ -22,25 +22,26 @@ fun writeSensorCsvHeader(out: Appendable) {
     out.append(SENSOR_CSV_HEADER).append('\n')
 }
 
+fun writeSensorCsvEvent(e: SensorEventEntity, out: Appendable) {
+    out.append(e.elapsedMs.toString()).append(',')
+        .append(e.sensorType).append(',')
+        .append(e.x.toString()).append(',')
+        .append(e.y.toString()).append(',')
+        .append(e.z.toString()).append(',')
+        .append(e.accuracy.toString()).append('\n')
+}
+
 fun writeSensorCsvEvents(events: Iterable<SensorEventEntity>, out: Appendable) {
-    for (e in events) {
-        out.append(e.elapsedMs.toString()).append(',')
-            .append(e.sensorType).append(',')
-            .append(e.x.toString()).append(',')
-            .append(e.y.toString()).append(',')
-            .append(e.z.toString()).append(',')
-            .append(e.accuracy.toString()).append('\n')
-    }
+    for (e in events) writeSensorCsvEvent(e, out)
 }
 
 // --- JSON (compact, escaped) -------------------------------------------------
 
-fun writeSensorJsonStart(session: SensorSessionEntity, totalEvents: Long, out: Appendable) {
+fun writeSensorJsonStart(session: SensorSessionEntity, out: Appendable) {
     out.append("{\"session_id\":").append(session.id.toString())
         .append(",\"started_at\":").append(session.startedAt.toString())
     session.endedAt?.let { out.append(",\"ended_at\":").append(it.toString()) }
-    out.append(",\"event_count\":").append(totalEvents.toString())
-        .append(",\"events\":[")
+    out.append(",\"events\":[")
 }
 
 /** Writes a single event object; [first] controls the leading comma separator. */
@@ -55,8 +56,10 @@ fun writeSensorJsonEvent(event: SensorEventEntity, first: Boolean, out: Appendab
         .append('}')
 }
 
-fun writeSensorJsonEnd(out: Appendable) {
-    out.append("]}")
+fun writeSensorJsonEnd(eventCount: Long, sampling: ExportSampling, out: Appendable) {
+    out.append("],\"event_count\":").append(eventCount.toString())
+        .append(",\"sampling\":").append(JSONObject.quote(sampling.describe()))
+        .append("}")
 }
 
 /** JSON has no NaN/Infinity; emit `null` for non-finite values. */
@@ -74,9 +77,9 @@ fun exportSensorCsv(session: SensorSessionEntity, events: List<SensorEventEntity
 
 fun exportSensorJson(session: SensorSessionEntity, events: List<SensorEventEntity>): String {
     val sb = StringBuilder()
-    writeSensorJsonStart(session, events.size.toLong(), sb)
+    writeSensorJsonStart(session, sb)
     events.forEachIndexed { i, e -> writeSensorJsonEvent(e, first = i == 0, out = sb) }
-    writeSensorJsonEnd(sb)
+    writeSensorJsonEnd(events.size.toLong(), ExportSampling.All, sb)
     return sb.toString()
 }
 
@@ -95,6 +98,30 @@ fun estimateExportBytes(format: SensorExportFormat, eventCount: Long): Long {
         SensorExportFormat.JSON -> JSON_BYTES_PER_EVENT
     }
     return ENVELOPE_BYTES + eventCount.coerceAtLeast(0) * perEvent
+}
+
+/**
+ * Estimate how many events a sampling strategy would emit, given the per-sensor
+ * event counts of the selected sensors and the session duration (used only for
+ * interval sampling). Each sensor is sampled independently.
+ */
+fun estimateSampledCount(
+    sampling: ExportSampling,
+    selectedCounts: List<Int>,
+    durationMs: Long?,
+): Long = when (sampling) {
+    ExportSampling.All -> selectedCounts.sumOf { it.toLong() }
+    is ExportSampling.EveryNth -> selectedCounts.sumOf { c ->
+        if (sampling.n <= 1) c.toLong() else (c + sampling.n - 1L) / sampling.n
+    }
+    is ExportSampling.Interval -> {
+        val cap = if (durationMs != null && durationMs > 0 && sampling.intervalMs > 0) {
+            durationMs / sampling.intervalMs + 1
+        } else {
+            Long.MAX_VALUE
+        }
+        selectedCounts.sumOf { minOf(it.toLong(), cap) }
+    }
 }
 
 /** Human-readable size, e.g. `6.0 MB`, `812 KB`. */

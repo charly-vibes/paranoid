@@ -74,14 +74,19 @@ class SensorExportersTest {
     }
 
     @Test
-    fun `streaming JSON matches String builder output`() {
+    fun `streaming JSON writes accurate count at end`() {
         val sb = StringBuilder()
-        writeSensorJsonStart(session, events.size.toLong(), sb)
-        events.forEachIndexed { i, e -> writeSensorJsonEvent(e, first = i == 0, out = sb) }
-        writeSensorJsonEnd(sb)
-        // Parses cleanly and has both events
+        writeSensorJsonStart(session, sb)
+        var kept = 0L
+        events.forEachIndexed { i, e ->
+            writeSensorJsonEvent(e, first = i == 0, out = sb)
+            kept++
+        }
+        writeSensorJsonEnd(kept, ExportSampling.EveryNth(5), sb)
         val json = JSONObject(sb.toString())
         assertEquals(2, json.getJSONArray("events").length())
+        assertEquals(2, json.getInt("event_count"))
+        assertEquals("1_of_5", json.getString("sampling"))
     }
 
     @Test

@@ -4,10 +4,13 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
+import dev.charly.paranoid.apps.sensorlogger.data.ExportSampling
+import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFilter
 import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFormat
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.estimateExportBytes
-import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvEvents
+import dev.charly.paranoid.apps.sensorlogger.data.estimateSampledCount
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvEvent
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvHeader
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEnd
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEvent
@@ -39,14 +42,11 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
         ) : State()
     }
 
-    /** Per-format size estimate shown in the export picker. */
-    data class FormatEstimate(val format: SensorExportFormat, val estimatedBytes: Long)
-
     sealed class ExportState {
         object Idle : ExportState()
         data class Running(
             val format: SensorExportFormat,
-            val writtenEvents: Long,
+            val processedEvents: Long,
             val totalEvents: Long,
         ) : ExportState()
 
@@ -92,14 +92,17 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Size estimates for each export format, for the picker dialog. */
-    fun estimates(totalEvents: Int): List<FormatEstimate> =
-        SensorExportFormat.values().map {
-            FormatEstimate(it, estimateExportBytes(it, totalEvents.toLong()))
-        }
-
-    fun requestExport(format: SensorExportFormat) {
+    fun requestExport(
+        format: SensorExportFormat,
+        includeTypes: Set<SensorType>,
+        sampling: ExportSampling,
+    ) {
         if (exportJob?.isActive == true) return
+        if (includeTypes.isEmpty()) {
+            _exportState.value = ExportState.Failed("Select at least one sensor")
+            return
+        }
+        val typeNames = includeTypes.map { it.name }
         exportJob = viewModelScope.launch(Dispatchers.IO) {
             val session = db.sensorSessionDao().getById(sessionId)
             if (session == null) {
@@ -111,12 +114,22 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                 return@launch
             }
 
-            val total = db.sensorEventDao().countForSessionLong(sessionId)
+            val total = db.sensorEventDao().countForSessionTypesLong(sessionId, typeNames)
             val dir = File(getApplication<Application>().cacheDir, "exports")
             dir.mkdirs()
             cleanStaleExports(dir)
 
-            val estimate = estimateExportBytes(format, total)
+            // Disk-space gate uses the *sampled* output estimate, not the raw
+            // selected count — otherwise heavy downsampling could be falsely
+            // rejected on low-space devices.
+            val typeNameSet = typeNames.toSet()
+            val selectedCounts = db.sensorEventDao().countsBySensorType(sessionId)
+                .filter { it.sensorType in typeNameSet }
+                .map { it.count }
+            val sampledEstimateCount = estimateSampledCount(
+                sampling, selectedCounts, session.endedAt?.minus(session.startedAt),
+            )
+            val estimate = estimateExportBytes(format, sampledEstimateCount)
             if (estimate + SPACE_MARGIN_BYTES > dir.usableSpace) {
                 _exportState.value = ExportState.Failed("Not enough free space for this export")
                 return@launch
@@ -126,44 +139,52 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
             val tmpFile = File(dir, "${finalFile.name}.tmp")
             _exportState.value = ExportState.Running(format, 0, total)
 
+            val filter = SensorExportFilter(includeTypes = emptySet(), sampling = sampling)
             var success = false
             try {
                 tmpFile.bufferedWriter(bufferSize = 64 * 1024).use { writer ->
-                    var written = 0L
+                    var scanned = 0L
+                    var kept = 0L
                     var first = true
                     var lastElapsed = Long.MIN_VALUE
                     var lastId = Long.MIN_VALUE
 
                     when (format) {
                         SensorExportFormat.CSV -> writeSensorCsvHeader(writer)
-                        SensorExportFormat.JSON -> writeSensorJsonStart(session, total, writer)
+                        SensorExportFormat.JSON -> writeSensorJsonStart(session, writer)
                     }
 
                     while (true) {
                         currentCoroutineContext().ensureActive()
-                        val page = db.sensorEventDao().getBySessionAfter(
-                            sessionId, lastElapsed, lastId, PAGE_SIZE,
+                        val page = db.sensorEventDao().getBySessionAfterTypes(
+                            sessionId, typeNames, lastElapsed, lastId, PAGE_SIZE,
                         )
                         if (page.isEmpty()) break
 
-                        when (format) {
-                            SensorExportFormat.CSV -> writeSensorCsvEvents(page, writer)
-                            SensorExportFormat.JSON -> page.forEach { e ->
-                                writeSensorJsonEvent(e, first, writer)
-                                first = false
+                        for (e in page) {
+                            if (!filter.accept(e)) continue
+                            when (format) {
+                                SensorExportFormat.CSV -> writeSensorCsvEvent(e, writer)
+                                SensorExportFormat.JSON -> {
+                                    writeSensorJsonEvent(e, first, writer)
+                                    first = false
+                                }
                             }
+                            kept++
                         }
 
                         val last = page.last()
                         lastElapsed = last.elapsedMs
                         lastId = last.id
-                        written += page.size
-                        _exportState.value = ExportState.Running(format, written, total)
+                        scanned += page.size
+                        _exportState.value = ExportState.Running(format, scanned, total)
 
                         if (page.size < PAGE_SIZE) break
                     }
 
-                    if (format == SensorExportFormat.JSON) writeSensorJsonEnd(writer)
+                    if (format == SensorExportFormat.JSON) {
+                        writeSensorJsonEnd(kept, sampling, writer)
+                    }
                     currentCoroutineContext().ensureActive()
                 }
 

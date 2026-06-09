@@ -54,11 +54,32 @@ interface SensorEventDao {
         limit: Int,
     ): List<SensorEventEntity>
 
+    /** Keyset page restricted to the given sensor types. */
+    @Query(
+        "SELECT * FROM sensor_events WHERE sessionId = :sessionId " +
+            "AND sensorType IN (:types) " +
+            "AND (elapsedMs > :lastElapsedMs OR (elapsedMs = :lastElapsedMs AND id > :lastId)) " +
+            "ORDER BY elapsedMs ASC, id ASC LIMIT :limit"
+    )
+    suspend fun getBySessionAfterTypes(
+        sessionId: Long,
+        types: List<String>,
+        lastElapsedMs: Long,
+        lastId: Long,
+        limit: Int,
+    ): List<SensorEventEntity>
+
     @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")
     suspend fun countForSession(sessionId: Long): Int
 
     @Query("SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId")
     suspend fun countForSessionLong(sessionId: Long): Long
+
+    @Query(
+        "SELECT COUNT(*) FROM sensor_events WHERE sessionId = :sessionId " +
+            "AND sensorType IN (:types)"
+    )
+    suspend fun countForSessionTypesLong(sessionId: Long, types: List<String>): Long
 
     @Query(
         "SELECT sensorType, COUNT(*) AS count FROM sensor_events " +
