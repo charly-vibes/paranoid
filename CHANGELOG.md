@@ -2,6 +2,20 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.4] — 2026-06-09 _(pre-release)_
+
+### Sensor Logger — robust, configurable session export
+
+- **Streaming export**: sessions are now exported by streaming events to the file in bounded pages (keyset pagination + buffered writer) instead of building the whole output in memory. A multi-hour session that would previously OOM the app now exports safely. JSON is compact and escaped; non-finite floats are written as `null`.
+- **Progress & volume awareness**: the export picker shows the event count and an estimated file size; a cancellable progress dialog reports events processed / total while the export runs.
+- **Resource safety**: writes to a temp file renamed on success, refuses exports that would exceed free space, cleans up partial/stale files, and supports cooperative cancellation. Incomplete sessions must be closed before export (snapshot consistency).
+- **Sensor selection**: choose exactly which sensor types to include (default all).
+- **Downsampling**: thin the data per sensor — *All samples*, *1 of N* (every Nth event), or *Every T* (one sample per interval). The JSON `event_count` and a live size estimate both reflect the chosen sampling.
+
+### Privacy invariant
+
+- Unchanged. Data only leaves the device when **you** explicitly share an export.
+
 ## [v0.10.0-rc.3] — 2026-06-06 _(pre-release)_
 
 ### Sensor Logger — session export & share
