@@ -20,7 +20,10 @@ data class SensorSessionEntity(
         childColumns = ["sessionId"],
         onDelete = ForeignKey.CASCADE,
     )],
-    indices = [Index(value = ["sessionId", "elapsedMs"])],
+    indices = [
+        Index(value = ["sessionId", "elapsedMs"]),
+        Index(value = ["sessionId", "sensorType"]),
+    ],
 )
 data class SensorEventEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

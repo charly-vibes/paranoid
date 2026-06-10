@@ -36,6 +36,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
 
     private val viewModel: SensorSessionDetailViewModel by viewModels()
 
+    private lateinit var statusView: TextView
     private lateinit var incompleteWarning: TextView
     private lateinit var startView: TextView
     private lateinit var endView: TextView
@@ -71,6 +72,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         startView = findViewById(R.id.tv_start_time)
         endView = findViewById(R.id.tv_end_time)
         durationView = findViewById(R.id.tv_duration)
+        statusView = findViewById(R.id.tv_status)
         totalEventsView = findViewById(R.id.tv_total_events)
         breakdownView = findViewById(R.id.tv_sensor_breakdown)
         markClosedBtn = findViewById(R.id.btn_mark_closed)
@@ -98,12 +100,41 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         viewModel.load(sessionId)
     }
 
+    @SuppressLint("SetTextI18n")
     private fun renderState(state: SensorSessionDetailViewModel.State) {
         when (state) {
-            SensorSessionDetailViewModel.State.Loading -> Unit
+            SensorSessionDetailViewModel.State.Loading -> {
+                statusView.visibility = View.VISIBLE
+                statusView.text = "Loading…"
+                setContentVisible(false)
+            }
             SensorSessionDetailViewModel.State.NotFound -> finish()
-            is SensorSessionDetailViewModel.State.Loaded ->
+            is SensorSessionDetailViewModel.State.Error -> {
+                statusView.visibility = View.VISIBLE
+                statusView.text = "Could not load session: ${state.message}"
+                setContentVisible(false)
+            }
+            is SensorSessionDetailViewModel.State.Loaded -> {
+                statusView.visibility = View.GONE
+                setContentVisible(true)
                 renderLoaded(state.session, state.totalEvents, state.bySensor)
+            }
+        }
+    }
+
+    /** Toggle the detail content + action buttons while loading/erroring. */
+    private fun setContentVisible(visible: Boolean) {
+        val v = if (visible) View.VISIBLE else View.GONE
+        startView.visibility = v
+        endView.visibility = v
+        durationView.visibility = v
+        totalEventsView.visibility = v
+        breakdownView.visibility = v
+        exportBtn.visibility = v
+        deleteBtn.visibility = v
+        if (!visible) {
+            incompleteWarning.visibility = View.GONE
+            markClosedBtn.visibility = View.GONE
         }
     }
 

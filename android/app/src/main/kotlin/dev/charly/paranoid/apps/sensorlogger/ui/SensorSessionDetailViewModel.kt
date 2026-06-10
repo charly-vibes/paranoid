@@ -35,6 +35,7 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
     sealed class State {
         object Loading : State()
         object NotFound : State()
+        data class Error(val message: String) : State()
         data class Loaded(
             val session: SensorSessionEntity,
             val totalEvents: Int,
@@ -70,16 +71,21 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
 
     fun load(id: Long) {
         sessionId = id
-        viewModelScope.launch {
-            val session = db.sensorSessionDao().getById(id)
-            if (session == null) {
-                _state.value = State.NotFound
-                return@launch
+        _state.value = State.Loading
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val session = db.sensorSessionDao().getById(id)
+                if (session == null) {
+                    _state.value = State.NotFound
+                    return@launch
+                }
+                val rows = db.sensorEventDao().countsBySensorType(id)
+                val bySensor = aggregateSensorCounts(rows.map { it.sensorType to it.count })
+                val total = bySensor.values.sum()
+                _state.value = State.Loaded(session, total, bySensor)
+            } catch (e: Exception) {
+                _state.value = State.Error(e.message ?: "Failed to load session")
             }
-            val rows = db.sensorEventDao().countsBySensorType(id)
-            val bySensor = aggregateSensorCounts(rows.map { it.sensorType to it.count })
-            val total = bySensor.values.sum()
-            _state.value = State.Loaded(session, total, bySensor)
         }
     }
 

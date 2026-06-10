@@ -2,6 +2,17 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.5] — 2026-06-09 _(pre-release)_
+
+### Sensor Logger — fix: long sessions would not open
+
+- **Fixed**: opening the detail screen for very long sessions (100+ minutes / millions of events) left the screen blank and reported "nothing to export". The per-sensor breakdown count did a `GROUP BY` with no matching index, forcing a full scan of every event row. Added a `(sessionId, sensorType)` index (DB migration 5→6) so the count is a fast index scan.
+- The detail screen now shows an explicit **Loading…** state and surfaces load errors instead of silently staying blank.
+
+### Privacy invariant
+
+- Unchanged. All data stays on-device unless you explicitly share an export.
+
 ## [v0.10.0-rc.4] — 2026-06-09 _(pre-release)_
 
 ### Sensor Logger — robust, configurable session export

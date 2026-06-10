@@ -31,7 +31,7 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
         SensorSessionEntity::class,
         SensorEventEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -99,6 +99,20 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
+        // Additive: adds (sessionId, sensorType) index on sensor_events so the
+        // per-sensor GROUP BY count used by the session detail screen is an
+        // index scan instead of a full scan of every event row. Without it,
+        // very long sessions (millions of rows) left the detail screen stuck
+        // loading. See sensor-logger session detail.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_sensor_events_sessionId_sensorType " +
+                        "ON sensor_events(sessionId, sensorType)"
+                )
+            }
+        }
+
         // Additive: adds sensor_sessions and sensor_events tables.
         private val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -162,7 +176,9 @@ abstract class ParanoidDatabase : RoomDatabase() {
                     ParanoidDatabase::class.java,
                     "paranoid.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(
+                        MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                    )
                     .build().also { instance = it }
             }
     }

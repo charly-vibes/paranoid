@@ -47,6 +47,17 @@
             android:padding="16dp">
 
             <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:text="Loading…"
+                android:textColor="#AAAAAA"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone" />
+
+            <TextView
                 android:id="@+id/tv_incomplete_warning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
