@@ -84,6 +84,7 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                 val total = bySensor.values.sum()
                 _state.value = State.Loaded(session, total, bySensor)
             } catch (e: Exception) {
+                android.util.Log.e("Paranoid", "SensorSessionDetail load($id) failed", e)
                 _state.value = State.Error(e.message ?: "Failed to load session")
             }
         }

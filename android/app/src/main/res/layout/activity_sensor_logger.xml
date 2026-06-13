@@ -151,6 +151,19 @@
         android:clickable="true"
         android:focusable="true"
         android:layout_marginHorizontal="24dp"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/btn_share_log"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:gravity="center"
+        android:text="Share debug log"
+        android:textColor="#777777"
+        android:textSize="13sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginHorizontal="24dp"
         android:layout_marginBottom="24dp" />
 
 </LinearLayout>

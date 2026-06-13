@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.ui.SensorSessionsViewModel
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -43,12 +44,21 @@ class SensorSessionsActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.btn_back).setOnClickListener { finish() }
 
+        DebugLog.d("SensorSessionsActivity: onCreate, subscribing to sessions")
         lifecycleScope.launch {
-            viewModel.sessions.collect { sessions ->
-                adapter.submitList(sessions)
-                empty.visibility = if (sessions.isEmpty()) View.VISIBLE else View.GONE
-                list.visibility = if (sessions.isEmpty()) View.GONE else View.VISIBLE
-            }
+            viewModel.sessions
+                .catch { t ->
+                    DebugLog.e("SensorSessionsActivity: sessions flow failed", t)
+                    empty.text = "Could not load sessions: ${t.message}"
+                    empty.visibility = View.VISIBLE
+                    list.visibility = View.GONE
+                }
+                .collect { sessions ->
+                    DebugLog.d("SensorSessionsActivity: received ${sessions.size} sessions")
+                    adapter.submitList(sessions)
+                    empty.visibility = if (sessions.isEmpty()) View.VISIBLE else View.GONE
+                    list.visibility = if (sessions.isEmpty()) View.GONE else View.VISIBLE
+                }
         }
     }
 }

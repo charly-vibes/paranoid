@@ -106,10 +106,21 @@ abstract class ParanoidDatabase : RoomDatabase() {
         // loading. See sensor-logger session detail.
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL(
-                    "CREATE INDEX IF NOT EXISTS index_sensor_events_sessionId_sensorType " +
-                        "ON sensor_events(sessionId, sensorType)"
-                )
+                val started = System.currentTimeMillis()
+                android.util.Log.d("Paranoid", "MIGRATION_5_6: creating sensor_events(sessionId, sensorType) index")
+                try {
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS index_sensor_events_sessionId_sensorType " +
+                            "ON sensor_events(sessionId, sensorType)"
+                    )
+                    android.util.Log.d(
+                        "Paranoid",
+                        "MIGRATION_5_6: done in ${System.currentTimeMillis() - started} ms",
+                    )
+                } catch (t: Throwable) {
+                    android.util.Log.e("Paranoid", "MIGRATION_5_6 FAILED", t)
+                    throw t
+                }
             }
         }
 

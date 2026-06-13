@@ -2,6 +2,14 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.6] — 2026-06-10 _(pre-release)_
+
+### Sensor Logger — diagnostics for the sessions list
+
+- The sessions list no longer crashes back to the measure screen if loading fails: it now catches the error, shows it on screen, and logs it.
+- Added a **Share debug log** button on the Sensor Logger screen that exports the app's recent logs so issues can be diagnosed.
+- Added timing/error logging around the DB migration and session loading.
+
 ## [v0.10.0-rc.5] — 2026-06-09 _(pre-release)_
 
 ### Sensor Logger — fix: long sessions would not open

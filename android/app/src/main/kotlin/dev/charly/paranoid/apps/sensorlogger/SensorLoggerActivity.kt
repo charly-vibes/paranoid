@@ -106,6 +106,9 @@ class SensorLoggerActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btn_sessions).setOnClickListener {
             startActivity(Intent(this, SensorSessionsActivity::class.java))
         }
+        findViewById<TextView>(R.id.btn_share_log).setOnClickListener {
+            DebugLog.dumpAndShare(this)
+        }
         configureBtn.setOnClickListener {
             startActivity(Intent(this, SensorCaptureConfigActivity::class.java))
         }
