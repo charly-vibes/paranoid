@@ -22,7 +22,6 @@ data class SensorSessionEntity(
     )],
     indices = [
         Index(value = ["sessionId", "elapsedMs"]),
-        Index(value = ["sessionId", "sensorType"]),
     ],
 )
 data class SensorEventEntity(

@@ -31,7 +31,7 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
         SensorSessionEntity::class,
         SensorEventEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -99,28 +99,25 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
-        // Additive: adds (sessionId, sensorType) index on sensor_events so the
-        // per-sensor GROUP BY count used by the session detail screen is an
-        // index scan instead of a full scan of every event row. Without it,
-        // very long sessions (millions of rows) left the detail screen stuck
-        // loading. See sensor-logger session detail.
+        // No-op. A previous version of this migration created a
+        // (sessionId, sensorType) index on sensor_events. On devices with
+        // very long sessions (millions of rows) building that index inside the
+        // migration transaction crashed the app on every DB open with
+        // SQLITE_NOMEM, bricking the whole app. The index has been removed from
+        // the schema; MIGRATION_6_7 drops it for devices that did complete v6.
         private val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                val started = System.currentTimeMillis()
-                android.util.Log.d("Paranoid", "MIGRATION_5_6: creating sensor_events(sessionId, sensorType) index")
-                try {
-                    db.execSQL(
-                        "CREATE INDEX IF NOT EXISTS index_sensor_events_sessionId_sensorType " +
-                            "ON sensor_events(sessionId, sensorType)"
-                    )
-                    android.util.Log.d(
-                        "Paranoid",
-                        "MIGRATION_5_6: done in ${System.currentTimeMillis() - started} ms",
-                    )
-                } catch (t: Throwable) {
-                    android.util.Log.e("Paranoid", "MIGRATION_5_6 FAILED", t)
-                    throw t
-                }
+                android.util.Log.d("Paranoid", "MIGRATION_5_6: no-op")
+            }
+        }
+
+        // Drops the (sessionId, sensorType) index that the old MIGRATION_5_6
+        // created. DROP INDEX is cheap (it only frees b-tree pages) and so does
+        // not hit the OOM that creating the index did.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                android.util.Log.d("Paranoid", "MIGRATION_6_7: dropping sensor_events(sessionId, sensorType) index")
+                db.execSQL("DROP INDEX IF EXISTS index_sensor_events_sessionId_sensorType")
             }
         }
 
@@ -189,6 +186,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
+                        MIGRATION_6_7,
                     )
                     .build().also { instance = it }
             }

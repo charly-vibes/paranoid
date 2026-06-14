@@ -2,6 +2,21 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.7] — 2026-06-14 _(pre-release)_
+
+### Sensor Logger — fix: app crashed on opening the sessions list
+
+- **Fixed**: on devices with very long recordings (millions of events), the app
+  crashed back to the measure screen whenever the database was opened. The
+  shared debug log revealed the real cause: the `(sessionId, sensorType)` index
+  added in rc.5 (DB migration 5→6) ran out of memory (`SQLITE_NOMEM`) while
+  building the index inside the migration transaction, crashing the app on
+  every launch.
+- Removed that index from the schema. Migration 5→6 is now a no-op and a new
+  migration 6→7 drops the index for devices that managed to create it. Building
+  the index is no longer attempted, so the database always opens. The per-sensor
+  breakdown still works using the existing `(sessionId, elapsedMs)` index.
+
 ## [v0.10.0-rc.6] — 2026-06-10 _(pre-release)_
 
 ### Sensor Logger — diagnostics for the sessions list
