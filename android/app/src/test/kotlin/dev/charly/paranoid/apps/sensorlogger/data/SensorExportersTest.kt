@@ -103,4 +103,49 @@ class SensorExportersTest {
         assertEquals("512 B", formatByteSize(512))
         assertTrue(formatByteSize(6_000_000).endsWith("MB"))
     }
+
+    @Test
+    fun `JSON variant is array under 1MB and lines above`() {
+        assertEquals(JsonVariant.ARRAY, resolveJsonVariant(0))
+        assertEquals(JsonVariant.ARRAY, resolveJsonVariant(JSON_ARRAY_MAX_BYTES))
+        assertEquals(JsonVariant.LINES, resolveJsonVariant(JSON_ARRAY_MAX_BYTES + 1))
+    }
+
+    @Test
+    fun `extension and mime track variant and gzip`() {
+        assertEquals("csv", exportFileExtension(SensorExportFormat.CSV, JsonVariant.ARRAY, false))
+        assertEquals("csv.gz", exportFileExtension(SensorExportFormat.CSV, JsonVariant.ARRAY, true))
+        assertEquals("json", exportFileExtension(SensorExportFormat.JSON, JsonVariant.ARRAY, false))
+        assertEquals("jsonl", exportFileExtension(SensorExportFormat.JSON, JsonVariant.LINES, false))
+        assertEquals("jsonl.gz", exportFileExtension(SensorExportFormat.JSON, JsonVariant.LINES, true))
+
+        assertEquals("application/json", exportMimeType(SensorExportFormat.JSON, JsonVariant.ARRAY, false))
+        assertEquals("application/x-ndjson", exportMimeType(SensorExportFormat.JSON, JsonVariant.LINES, false))
+        assertEquals("application/gzip", exportMimeType(SensorExportFormat.JSON, JsonVariant.LINES, true))
+    }
+
+    @Test
+    fun `JSONL has one independent object per line plus a meta header`() {
+        val sb = StringBuilder()
+        writeSensorJsonlMeta(session, ExportSampling.EveryNth(5), sb)
+        events.forEach { writeSensorJsonlEvent(it, sb) }
+        val lines = sb.toString().trim().split("\n")
+        assertEquals(3, lines.size) // meta + 2 events
+
+        val meta = JSONObject(lines[0])
+        assertEquals("meta", meta.getString("record"))
+        assertEquals(7L, meta.getLong("session_id"))
+        assertEquals("1_of_5", meta.getString("sampling"))
+
+        // Each event line parses on its own without the rest of the file.
+        assertEquals("ACCELEROMETER", JSONObject(lines[1]).getString("sensor_type"))
+        assertEquals("LIGHT", JSONObject(lines[2]).getString("sensor_type"))
+    }
+
+    @Test
+    fun `gzip estimate is smaller than raw`() {
+        val raw = estimateExportBytes(SensorExportFormat.JSON, 100_000, gzip = false)
+        val gz = estimateExportBytes(SensorExportFormat.JSON, 100_000, gzip = true)
+        assertTrue(gz < raw)
+    }
 }

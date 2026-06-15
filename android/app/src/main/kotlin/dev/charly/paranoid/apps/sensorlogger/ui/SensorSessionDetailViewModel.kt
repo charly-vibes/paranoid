@@ -5,16 +5,22 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.charly.paranoid.apps.netmap.data.ParanoidDatabase
 import dev.charly.paranoid.apps.sensorlogger.data.ExportSampling
+import dev.charly.paranoid.apps.sensorlogger.data.JsonVariant
 import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFilter
 import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFormat
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.estimateExportBytes
 import dev.charly.paranoid.apps.sensorlogger.data.estimateSampledCount
+import dev.charly.paranoid.apps.sensorlogger.data.exportFileExtension
+import dev.charly.paranoid.apps.sensorlogger.data.exportMimeType
+import dev.charly.paranoid.apps.sensorlogger.data.resolveJsonVariant
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvEvent
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorCsvHeader
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEnd
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonEvent
 import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonStart
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonlEvent
+import dev.charly.paranoid.apps.sensorlogger.data.writeSensorJsonlMeta
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.aggregateSensorCounts
 import kotlinx.coroutines.Dispatchers
@@ -29,6 +35,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
+import java.io.FileOutputStream
+import java.util.zip.GZIPOutputStream
 
 class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -103,6 +111,7 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
         format: SensorExportFormat,
         includeTypes: Set<SensorType>,
         sampling: ExportSampling,
+        gzip: Boolean = false,
     ) {
         if (exportJob?.isActive == true) return
         if (includeTypes.isEmpty()) {
@@ -137,19 +146,40 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                 sampling, selectedCounts, session.endedAt?.minus(session.startedAt),
             )
             val estimate = estimateExportBytes(format, sampledEstimateCount)
+            // Reserve the *uncompressed* estimate even for gzip exports: gzip
+            // only writes less, so this stays conservative on low-space devices.
             if (estimate + SPACE_MARGIN_BYTES > dir.usableSpace) {
                 _exportState.value = ExportState.Failed("Not enough free space for this export")
                 return@launch
             }
 
-            val finalFile = File(dir, "sensor_session_${session.id}.${format.extension}")
+            // Small JSON exports stay a readable array; large ones become JSONL
+            // so they can be streamed/sampled without loading the whole file.
+            val variant = if (format == SensorExportFormat.JSON) {
+                resolveJsonVariant(estimateExportBytes(SensorExportFormat.JSON, sampledEstimateCount))
+            } else {
+                JsonVariant.ARRAY
+            }
+            val extension = exportFileExtension(format, variant, gzip)
+            val mimeType = exportMimeType(format, variant, gzip)
+            val useJsonl = format == SensorExportFormat.JSON && variant == JsonVariant.LINES
+
+            val finalFile = File(dir, "sensor_session_${session.id}.$extension")
             val tmpFile = File(dir, "${finalFile.name}.tmp")
             _exportState.value = ExportState.Running(format, 0, total)
 
             val filter = SensorExportFilter(includeTypes = emptySet(), sampling = sampling)
             var success = false
             try {
-                tmpFile.bufferedWriter(bufferSize = 64 * 1024).use { writer ->
+                val rawOut = FileOutputStream(tmpFile)
+                // Close rawOut if gzip wrapping fails before `use` takes ownership.
+                val stream = try {
+                    if (gzip) GZIPOutputStream(rawOut, 64 * 1024) else rawOut
+                } catch (t: Throwable) {
+                    rawOut.close()
+                    throw t
+                }
+                stream.writer().buffered(bufferSize = 64 * 1024).use { writer ->
                     var scanned = 0L
                     var kept = 0L
                     var first = true
@@ -158,7 +188,9 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
 
                     when (format) {
                         SensorExportFormat.CSV -> writeSensorCsvHeader(writer)
-                        SensorExportFormat.JSON -> writeSensorJsonStart(session, writer)
+                        SensorExportFormat.JSON ->
+                            if (useJsonl) writeSensorJsonlMeta(session, sampling, writer)
+                            else writeSensorJsonStart(session, writer)
                     }
 
                     while (true) {
@@ -172,10 +204,13 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                             if (!filter.accept(e)) continue
                             when (format) {
                                 SensorExportFormat.CSV -> writeSensorCsvEvent(e, writer)
-                                SensorExportFormat.JSON -> {
-                                    writeSensorJsonEvent(e, first, writer)
-                                    first = false
-                                }
+                                SensorExportFormat.JSON ->
+                                    if (useJsonl) {
+                                        writeSensorJsonlEvent(e, writer)
+                                    } else {
+                                        writeSensorJsonEvent(e, first, writer)
+                                        first = false
+                                    }
                             }
                             kept++
                         }
@@ -189,7 +224,7 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                         if (page.size < PAGE_SIZE) break
                     }
 
-                    if (format == SensorExportFormat.JSON) {
+                    if (format == SensorExportFormat.JSON && !useJsonl) {
                         writeSensorJsonEnd(kept, sampling, writer)
                     }
                     currentCoroutineContext().ensureActive()
@@ -199,7 +234,7 @@ class SensorSessionDetailViewModel(app: Application) : AndroidViewModel(app) {
                 if (finalFile.exists()) finalFile.delete()
                 check(tmpFile.renameTo(finalFile)) { "Could not finalize export file" }
                 success = true
-                _exportState.value = ExportState.Ready(finalFile, format.mimeType)
+                _exportState.value = ExportState.Ready(finalFile, mimeType)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) {
                     _exportState.value = ExportState.Idle

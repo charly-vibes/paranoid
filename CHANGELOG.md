@@ -2,6 +2,26 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.8] — 2026-06-14 _(pre-release)_
+
+### Sensor Logger — compact, streamable exports for long sessions
+
+- **JSONL for large sessions**: a JSON export now stays a single readable array
+  only while it is small (≤ 1 MB estimated). Above that it is written as JSONL
+  (one JSON object per line) with a `meta` header line, so multi-hour sessions
+  can be streamed and sampled by downstream tools (`jq`, pandas `lines=True`,
+  DuckDB) without parsing the whole file into memory. CSV is unchanged and
+  remains the most compact line-oriented option.
+- **gzip compression**: a new **Compress (gzip)** option streams the export
+  through gzip. Sensor float streams compress well (~5–6×), so a multi-hour
+  session that was ~1.2 GB as raw JSON drops to roughly 100–200 MB. The size
+  estimate in the export dialog reflects the gzip reduction; the free-space
+  check still reserves the uncompressed size to stay safe.
+
+### Privacy invariant
+
+- Unchanged. Data only leaves the device when **you** explicitly share an export.
+
 ## [v0.10.0-rc.7] — 2026-06-14 _(pre-release)_
 
 ### Sensor Logger — fix: app crashed on opening the sessions list

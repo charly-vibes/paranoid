@@ -183,6 +183,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
         val sensorContainer = view.findViewById<LinearLayout>(R.id.container_sensors)
         val samplingSpinner = view.findViewById<Spinner>(R.id.spinner_sampling)
         val formatSpinner = view.findViewById<Spinner>(R.id.spinner_format)
+        val gzipCheck = view.findViewById<CheckBox>(R.id.check_gzip)
         val estimateView = view.findViewById<TextView>(R.id.tv_estimate)
 
         // Sensor checkboxes (default all checked), most-frequent first.
@@ -219,11 +220,14 @@ class SensorSessionDetailActivity : AppCompatActivity() {
             }
             val counts = selected.map { bySensor[it] ?: 0 }
             val outEvents = estimateSampledCount(currentSampling(), counts, sessionDurationMs)
-            val bytes = estimateExportBytes(currentFormat(), outEvents)
-            estimateView.text = "≈ $outEvents events · ${formatByteSize(bytes)}"
+            val gzip = gzipCheck.isChecked
+            val bytes = estimateExportBytes(currentFormat(), outEvents, gzip)
+            val suffix = if (gzip) " (gzipped)" else ""
+            estimateView.text = "≈ $outEvents events · ${formatByteSize(bytes)}$suffix"
         }
 
         checks.values.forEach { it.setOnCheckedChangeListener { _, _ -> refreshEstimate() } }
+        gzipCheck.setOnCheckedChangeListener { _, _ -> refreshEstimate() }
         val onSelect = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(p: android.widget.AdapterView<*>?, v: View?, pos: Int, id: Long) = refreshEstimate()
             override fun onNothingSelected(p: android.widget.AdapterView<*>?) = Unit
@@ -245,7 +249,7 @@ class SensorSessionDetailActivity : AppCompatActivity() {
                 if (selected.isEmpty()) {
                     Toast.makeText(this, "Select at least one sensor", Toast.LENGTH_SHORT).show()
                 } else {
-                    viewModel.requestExport(currentFormat(), selected, currentSampling())
+                    viewModel.requestExport(currentFormat(), selected, currentSampling(), gzipCheck.isChecked)
                     dialog.dismiss()
                 }
             }

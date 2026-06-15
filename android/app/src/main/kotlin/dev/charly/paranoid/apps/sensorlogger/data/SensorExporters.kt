@@ -14,6 +14,49 @@ enum class SensorExportFormat(val extension: String, val mimeType: String) {
     JSON("json", "application/json"),
 }
 
+/**
+ * How a JSON export is laid out. Small sessions stay a single pretty-to-consume
+ * array; large ones become line-delimited (JSONL/NDJSON) so downstream tools can
+ * stream and sample without parsing the whole file into memory.
+ */
+enum class JsonVariant { ARRAY, LINES }
+
+/** A JSON export at or below this estimated size stays a single array. */
+const val JSON_ARRAY_MAX_BYTES = 1L * 1024 * 1024 // 1 MB
+
+fun resolveJsonVariant(estimatedJsonBytes: Long): JsonVariant =
+    if (estimatedJsonBytes <= JSON_ARRAY_MAX_BYTES) JsonVariant.ARRAY else JsonVariant.LINES
+
+/**
+ * File extension for the resolved export, e.g. `csv`, `json`, `jsonl`,
+ * `csv.gz`, `jsonl.gz`. [variant] only matters when [format] is JSON.
+ */
+fun exportFileExtension(
+    format: SensorExportFormat,
+    variant: JsonVariant,
+    gzip: Boolean,
+): String {
+    val base = when (format) {
+        SensorExportFormat.CSV -> "csv"
+        SensorExportFormat.JSON -> if (variant == JsonVariant.LINES) "jsonl" else "json"
+    }
+    return if (gzip) "$base.gz" else base
+}
+
+/** MIME type for the resolved export. Gzipped outputs are `application/gzip`. */
+fun exportMimeType(
+    format: SensorExportFormat,
+    variant: JsonVariant,
+    gzip: Boolean,
+): String {
+    if (gzip) return "application/gzip"
+    return when (format) {
+        SensorExportFormat.CSV -> "text/csv"
+        SensorExportFormat.JSON ->
+            if (variant == JsonVariant.LINES) "application/x-ndjson" else "application/json"
+    }
+}
+
 const val SENSOR_CSV_HEADER = "elapsed_ms,sensor_type,x,y,z,accuracy"
 
 // --- CSV ---------------------------------------------------------------------
@@ -44,9 +87,8 @@ fun writeSensorJsonStart(session: SensorSessionEntity, out: Appendable) {
     out.append(",\"events\":[")
 }
 
-/** Writes a single event object; [first] controls the leading comma separator. */
-fun writeSensorJsonEvent(event: SensorEventEntity, first: Boolean, out: Appendable) {
-    if (!first) out.append(',')
+/** Appends the bare `{...}` object for one event, shared by array and JSONL. */
+private fun appendSensorEventObject(event: SensorEventEntity, out: Appendable) {
     out.append("{\"elapsed_ms\":").append(event.elapsedMs.toString())
         .append(",\"sensor_type\":").append(JSONObject.quote(event.sensorType))
         .append(",\"x\":").append(jsonNum(event.x))
@@ -56,10 +98,38 @@ fun writeSensorJsonEvent(event: SensorEventEntity, first: Boolean, out: Appendab
         .append('}')
 }
 
+/** Writes a single event object; [first] controls the leading comma separator. */
+fun writeSensorJsonEvent(event: SensorEventEntity, first: Boolean, out: Appendable) {
+    if (!first) out.append(',')
+    appendSensorEventObject(event, out)
+}
+
 fun writeSensorJsonEnd(eventCount: Long, sampling: ExportSampling, out: Appendable) {
     out.append("],\"event_count\":").append(eventCount.toString())
         .append(",\"sampling\":").append(JSONObject.quote(sampling.describe()))
         .append("}")
+}
+
+// --- JSONL / NDJSON (one record per line) ------------------------------------
+
+/**
+ * First line of a JSONL export: a metadata record describing the session, so the
+ * file is self-describing. Remaining lines are event records of the same shape
+ * as the array variant. Consumers can `tail -n +2` to skip the header and then
+ * sample lines freely without parsing the whole file.
+ */
+fun writeSensorJsonlMeta(session: SensorSessionEntity, sampling: ExportSampling, out: Appendable) {
+    out.append("{\"record\":\"meta\",\"session_id\":").append(session.id.toString())
+        .append(",\"started_at\":").append(session.startedAt.toString())
+    session.endedAt?.let { out.append(",\"ended_at\":").append(it.toString()) }
+    out.append(",\"sampling\":").append(JSONObject.quote(sampling.describe()))
+        .append("}\n")
+}
+
+/** Writes one event as a standalone line terminated by a newline. */
+fun writeSensorJsonlEvent(event: SensorEventEntity, out: Appendable) {
+    appendSensorEventObject(event, out)
+    out.append('\n')
 }
 
 /** JSON has no NaN/Infinity; emit `null` for non-finite values. */
@@ -91,6 +161,11 @@ private const val CSV_BYTES_PER_EVENT = 55L
 private const val JSON_BYTES_PER_EVENT = 150L
 private const val ENVELOPE_BYTES = 128L
 
+// Sensor float streams are highly repetitive and gzip compresses them well in
+// practice (~5–6x). Used only to give the user a realistic size hint; the
+// disk-space gate still reserves the uncompressed estimate to stay safe.
+private const val GZIP_ESTIMATE_FACTOR = 0.18
+
 /** Cheap upper-ish estimate of the exported file size in bytes. */
 fun estimateExportBytes(format: SensorExportFormat, eventCount: Long): Long {
     val perEvent = when (format) {
@@ -98,6 +173,12 @@ fun estimateExportBytes(format: SensorExportFormat, eventCount: Long): Long {
         SensorExportFormat.JSON -> JSON_BYTES_PER_EVENT
     }
     return ENVELOPE_BYTES + eventCount.coerceAtLeast(0) * perEvent
+}
+
+/** Estimate including an optional gzip reduction, for display to the user. */
+fun estimateExportBytes(format: SensorExportFormat, eventCount: Long, gzip: Boolean): Long {
+    val raw = estimateExportBytes(format, eventCount)
+    return if (gzip) (raw * GZIP_ESTIMATE_FACTOR).toLong().coerceAtLeast(1) else raw
 }
 
 /**
