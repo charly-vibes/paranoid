@@ -2,6 +2,17 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0-rc.9] — 2026-06-15 _(pre-release)_
+
+### Sensor Logger — on-device storage visibility
+
+- The **sessions list** now shows a summary line with the session count and the
+  actual on-disk size of the Paranoid database (main file + WAL + shared memory),
+  so you can see how much device storage your recordings occupy.
+- The **session detail** screen now shows an estimated on-device footprint next
+  to the event count (e.g. `Total events: 8,000,000 · ≈ 650 MB on device`), so a
+  heavy recording's cost is obvious before you export or delete it.
+
 ## [v0.10.0-rc.8] — 2026-06-14 _(pre-release)_
 
 ### Sensor Logger — compact, streamable exports for long sessions

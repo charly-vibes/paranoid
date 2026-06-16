@@ -14,9 +14,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import dev.charly.paranoid.R
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
+import dev.charly.paranoid.apps.sensorlogger.data.formatByteSize
 import dev.charly.paranoid.apps.sensorlogger.ui.SensorSessionsViewModel
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,6 +34,7 @@ class SensorSessionsActivity : AppCompatActivity() {
 
         val list = findViewById<RecyclerView>(R.id.sessions_list)
         val empty = findViewById<TextView>(R.id.empty_state)
+        val storageSummary = findViewById<TextView>(R.id.tv_storage_summary)
 
         adapter = SessionAdapter { session ->
             startActivity(Intent(this, SensorSessionDetailActivity::class.java).apply {
@@ -58,8 +61,18 @@ class SensorSessionsActivity : AppCompatActivity() {
                     adapter.submitList(sessions)
                     empty.visibility = if (sessions.isEmpty()) View.VISIBLE else View.GONE
                     list.visibility = if (sessions.isEmpty()) View.GONE else View.VISIBLE
+                    storageSummary.text =
+                        "${sessions.size} sessions · ${formatByteSize(databaseSizeBytes())} on device"
+                    storageSummary.visibility = View.VISIBLE
                 }
         }
+    }
+
+    /** Total on-disk size of the Paranoid database (main file + WAL + shared memory). */
+    private fun databaseSizeBytes(): Long {
+        val base = getDatabasePath("paranoid.db")
+        return listOf(base, File("${base.path}-wal"), File("${base.path}-shm"))
+            .sumOf { if (it.exists()) it.length() else 0L }
     }
 }
 

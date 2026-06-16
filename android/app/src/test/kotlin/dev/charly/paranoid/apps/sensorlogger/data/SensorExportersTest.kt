@@ -148,4 +148,11 @@ class SensorExportersTest {
         val gz = estimateExportBytes(SensorExportFormat.JSON, 100_000, gzip = true)
         assertTrue(gz < raw)
     }
+
+    @Test
+    fun `stored bytes estimate scales with events and is zero when empty`() {
+        assertEquals(0L, estimateStoredBytes(0))
+        assertEquals(0L, estimateStoredBytes(-5))
+        assertTrue(estimateStoredBytes(1_000_000) > estimateStoredBytes(1_000))
+    }
 }

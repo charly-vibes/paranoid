@@ -181,6 +181,17 @@ fun estimateExportBytes(format: SensorExportFormat, eventCount: Long, gzip: Bool
     return if (gzip) (raw * GZIP_ESTIMATE_FACTOR).toLong().coerceAtLeast(1) else raw
 }
 
+// Rough on-disk SQLite cost of one stored event: the data row (8 small
+// integers, 3 REAL columns, a short sensorType string, row header) plus its
+// entry in the (sessionId, elapsedMs) index. Used to show users roughly how
+// much device storage a recording occupies; the actual database file size is
+// the authoritative number shown on the sessions list.
+private const val STORED_BYTES_PER_EVENT = 85L
+
+/** Rough estimate of the device storage a session of [eventCount] events uses. */
+fun estimateStoredBytes(eventCount: Long): Long =
+    eventCount.coerceAtLeast(0) * STORED_BYTES_PER_EVENT
+
 /**
  * Estimate how many events a sampling strategy would emit, given the per-sensor
  * event counts of the selected sensors and the session duration (used only for

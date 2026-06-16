@@ -23,6 +23,7 @@ import dev.charly.paranoid.apps.sensorlogger.data.SensorExportFormat
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.estimateExportBytes
 import dev.charly.paranoid.apps.sensorlogger.data.estimateSampledCount
+import dev.charly.paranoid.apps.sensorlogger.data.estimateStoredBytes
 import dev.charly.paranoid.apps.sensorlogger.data.formatByteSize
 import dev.charly.paranoid.apps.sensorlogger.model.SensorType
 import dev.charly.paranoid.apps.sensorlogger.model.prettySensorName
@@ -160,7 +161,8 @@ class SensorSessionDetailActivity : AppCompatActivity() {
             durationView.text = "Duration: ${formatDuration((ended - session.startedAt) / 1000)}"
             markClosedBtn.visibility = View.GONE
         }
-        totalEventsView.text = "Total events: $totalEvents"
+        totalEventsView.text =
+            "Total events: $totalEvents  ·  ≈ ${formatByteSize(estimateStoredBytes(totalEvents.toLong()))} on device"
         breakdownView.text = if (bySensor.isEmpty()) {
             "(no events recorded)"
         } else {
