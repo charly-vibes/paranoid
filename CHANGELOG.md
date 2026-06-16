@@ -2,6 +2,50 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.10.0] — 2026-06-16
+
+The Sensor Logger release: per-sensor capture configuration, a live graph, and
+robust export/sharing of recorded sessions. Consolidates the `v0.10.0-rc.*`
+pre-releases.
+
+### Sensor Logger — capture configuration & live graph
+
+- Recording is now opt-in per sensor: by default only accelerometer, gyroscope,
+  and linear acceleration are captured. A **Configure capture** screen lets you
+  enable/disable each sensor, choose whether it shows on the graph, and set its
+  rate as **Off**, **Auto**, or a **custom integer Hz** target.
+- A **live graph** stacks one auto-scaled band per visible sensor; each band
+  label shows the sensor's actual delivered rate (`~N Hz`), making it obvious why
+  light, proximity, pressure, gravity, and motion sensors refresh at different
+  cadences. "Visualize without record" is a first-class mode.
+
+### Sensor Logger — export & share
+
+- Export a recorded session as **CSV** or **JSON** and hand it to the Android
+  share sheet. Exports stream to disk in bounded pages, so multi-hour sessions
+  no longer exhaust memory.
+- Choose **which sensors** to include and **downsample** per sensor (all / 1-of-N
+  / one per interval). The dialog shows an event count and estimated file size.
+- Large JSON exports are written as **JSONL** (one object per line) so they can
+  be streamed and sampled without loading the whole file; small ones stay a
+  readable array. An optional **gzip** mode compresses exports ~5–6×.
+- **On-device storage visibility**: the sessions list shows the database size and
+  each session shows its estimated footprint.
+
+### Fixes
+
+- Opening the sessions list or a long session's detail no longer crashes the app.
+  The root cause was an index migration that ran out of memory while building an
+  index on multi-million-row sessions; the index was removed and per-sensor
+  counts use the existing `(sessionId, elapsedMs)` index.
+- Added a **Share debug log** button and resilient error states so failures are
+  visible and diagnosable instead of silently bouncing back to the measure screen.
+
+### Privacy invariant
+
+- Unchanged. All sensor data stays on-device; it only leaves when **you**
+  explicitly share an export.
+
 ## [v0.10.0-rc.9] — 2026-06-15 _(pre-release)_
 
 ### Sensor Logger — on-device storage visibility
