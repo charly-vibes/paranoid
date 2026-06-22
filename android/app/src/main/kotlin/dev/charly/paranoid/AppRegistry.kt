@@ -2,6 +2,7 @@ package dev.charly.paranoid
 
 import dev.charly.paranoid.apps.netdiag.NetDiagActivity
 import dev.charly.paranoid.apps.netmap.NetMapActivity
+import dev.charly.paranoid.apps.screentime.ScreenTimeActivity
 import dev.charly.paranoid.apps.sensorlogger.SensorLoggerActivity
 import dev.charly.paranoid.apps.usageaudit.UsageAuditActivity
 
@@ -24,6 +25,12 @@ object AppRegistry {
             name = "UsageAudit",
             description = "Daily phone usage and overnight battery audit",
             activityClass = UsageAuditActivity::class.java
+        ),
+        AppEntry(
+            id = "screentime",
+            name = "ScreenTime",
+            description = "Track screen-on sessions with checkpoints and a daily report",
+            activityClass = ScreenTimeActivity::class.java
         ),
         AppEntry(
             id = "sensorlogger",

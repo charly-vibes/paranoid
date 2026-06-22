@@ -14,6 +14,9 @@ import dev.charly.paranoid.apps.netdiag.data.SessionDao
 import dev.charly.paranoid.apps.netdiag.data.SnapshotDao
 import dev.charly.paranoid.apps.sensorlogger.data.SensorEventDao
 import dev.charly.paranoid.apps.sensorlogger.data.SensorEventEntity
+import dev.charly.paranoid.apps.screentime.data.AppIntervalEntity
+import dev.charly.paranoid.apps.screentime.data.ScreenTimeDao
+import dev.charly.paranoid.apps.screentime.data.SessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionDao
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionEntity
 import dev.charly.paranoid.apps.usageaudit.BatterySnapshotDao
@@ -30,8 +33,10 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
         BatterySnapshotEntity::class,
         SensorSessionEntity::class,
         SensorEventEntity::class,
+        SessionEntity::class,
+        AppIntervalEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -44,6 +49,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
     abstract fun batterySnapshotDao(): BatterySnapshotDao
     abstract fun sensorSessionDao(): SensorSessionDao
     abstract fun sensorEventDao(): SensorEventDao
+    abstract fun screenTimeDao(): ScreenTimeDao
 
     companion object {
         @Volatile
@@ -177,6 +183,33 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
+        // Additive: adds screentime_sessions and screentime_app_intervals tables.
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS screentime_sessions (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        startMillis INTEGER NOT NULL,
+                        endMillis INTEGER
+                    )"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS screentime_app_intervals (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        sessionId INTEGER NOT NULL,
+                        packageName TEXT NOT NULL,
+                        startMillis INTEGER NOT NULL,
+                        endMillis INTEGER NOT NULL,
+                        FOREIGN KEY(sessionId) REFERENCES screentime_sessions(id) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_screentime_app_intervals_sessionId " +
+                        "ON screentime_app_intervals(sessionId)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ParanoidDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -186,7 +219,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                        MIGRATION_6_7,
+                        MIGRATION_6_7, MIGRATION_7_8,
                     )
                     .build().also { instance = it }
             }

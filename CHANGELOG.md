@@ -2,6 +2,38 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0-rc.1] — 2026-06-22
+
+Release candidate introducing the **ScreenTime** mini-app: on-device tracking of
+screen-on sessions with usage checkpoints, a system overlay bar, and a daily
+morning report. All processing is local; no new network permissions.
+
+### ScreenTime — new mini-app
+
+- **Session tracking**: a foreground service records each screen-on session and
+  attributes per-app foreground time via `UsageStatsManager` sampling (~5s), with
+  a 30s screen-off debounce so brief blips don't split a session. Sessions and
+  per-app intervals persist in the shared Room database and survive reboots.
+- **Checkpoints**: notifications fire at usage milestones during a continuous
+  session to nudge awareness of time spent.
+- **Overlay bar**: an optional `SYSTEM_ALERT_WINDOW` progress bar shows current
+  session length over other apps; it is non-interactive (touches pass through).
+- **Morning report**: a WorkManager job posts an 08:00 summary of yesterday, the
+  7-day rolling average, and month-to-date totals, then re-enqueues itself. Old
+  sessions (>31 days) are pruned during the daily run.
+- **Entry screen**: shows the status of usage-access, notifications, and overlay
+  permissions with per-permission deep links, a start/stop toggle, today's
+  sessions (start time, duration, top app), and an inline warning when a required
+  permission is revoked while monitoring.
+
+### Notes
+
+- The only new permission is `SYSTEM_ALERT_WINDOW` (overlay); `PACKAGE_USAGE_STATS`
+  and `POST_NOTIFICATIONS` are already requested by the app.
+- Device/instrumentation validation cases are documented in `androidTest` but not
+  executed in CI (no emulator job); the underlying logic is covered by JVM unit
+  tests.
+
 ## [v0.10.0] — 2026-06-16
 
 The Sensor Logger release: per-sensor capture configuration, a live graph, and

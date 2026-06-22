@@ -10,6 +10,14 @@
     <string name="usage_access_required_title">Usage access required</string>
     <string name="usage_access_required_message">Usage access is required to read app activity for Today and Last Night reports.</string>
     <string name="usage_access_open_settings">Open Usage Access Settings</string>
+
+    <!-- ScreenTime -->
+    <string name="screentime_title">ScreenTime</string>
+    <string name="screentime_permissions_title">Permissions</string>
+    <string name="screentime_today_title">Today\'s sessions</string>
+    <string name="screentime_today_empty">No sessions recorded today yet.</string>
+    <string name="screentime_start">Start monitoring</string>
+    <string name="screentime_stop">Stop monitoring</string>
     <string name="usage_access_enabled_title">Usage access enabled</string>
     <string name="usage_access_enabled_message">Today and Last Night reports can now query local app activity.</string>
     <string name="today_section_title">Today</string>
