@@ -55,15 +55,19 @@ class ScreenTimeActivity : AppCompatActivity() {
     private fun onToggleClicked() {
         if (ScreenTimeMonitoringPrefs.isEnabled(this)) {
             startService(ScreenTimeService.stopIntent(this))
+            // Update the flag optimistically so the UI flips immediately; the service writes the
+            // same value when it stops. Without this the toggle reads a stale pref until onResume.
+            ScreenTimeMonitoringPrefs.setEnabled(this, false)
         } else {
             if (!ScreenTimePermissions.allGranted(this)) {
                 renderWarning(force = "Grant all permissions above before starting.")
                 return
             }
             startForegroundService(ScreenTimeService.startIntent(this))
+            ScreenTimeMonitoringPrefs.setEnabled(this, true)
         }
-        // Reflect the new state immediately; onResume re-renders after the service updates prefs.
         renderToggle()
+        renderWarning()
     }
 
     private fun renderPermissions() {
@@ -133,31 +137,37 @@ class ScreenTimeActivity : AppCompatActivity() {
         val now = System.currentTimeMillis()
         val dayStart = startOfToday(now)
         lifecycleScope.launch {
-            val sessions = withContext(Dispatchers.IO) {
+            // Query and label resolution both run off the main thread; resolving app labels via
+            // PackageManager per row on the UI thread is what made the list feel laggy.
+            val lines = withContext(Dispatchers.IO) {
                 val dao = ParanoidDatabase.getInstance(applicationContext).screenTimeDao()
-                dao.sessionsOverlapping(dayStart, now).map { it.toDomain(dao.intervalsForSession(it.id)) }
+                val sessions = dao.sessionsOverlapping(dayStart, now)
+                    .map { it.toDomain(dao.intervalsForSession(it.id)) }
+                TodaySessionsPresenter.present(sessions, now).map { row ->
+                    val time = timeFormat.format(Date(row.startMillis))
+                    val duration = formatDuration(row.durationMillis)
+                    val openMarker = if (row.isOpen) " (active)" else ""
+                    val top = row.topAppPackage?.let { appLabel(it) } ?: "—"
+                    "$time · $duration$openMarker\n$top"
+                }
             }
-            renderSessions(TodaySessionsPresenter.present(sessions, now))
+            renderSessions(lines)
         }
     }
 
-    private fun renderSessions(rows: List<SessionRow>) {
+    private fun renderSessions(lines: List<String>) {
         val empty = findViewById<TextView>(R.id.screentime_sessions_empty)
         val container = findViewById<LinearLayout>(R.id.screentime_sessions)
         container.removeAllViews()
-        empty.visibility = if (rows.isEmpty()) View.VISIBLE else View.GONE
-        for (row in rows) {
-            container.addView(buildSessionRow(row))
+        empty.visibility = if (lines.isEmpty()) View.VISIBLE else View.GONE
+        for (line in lines) {
+            container.addView(buildSessionRow(line))
         }
     }
 
-    private fun buildSessionRow(row: SessionRow): View {
+    private fun buildSessionRow(line: String): View {
         val view = TextView(this).apply {
-            val time = timeFormat.format(Date(row.startMillis))
-            val duration = formatDuration(row.durationMillis)
-            val top = row.topAppPackage?.let { appLabel(it) } ?: "—"
-            val openMarker = if (row.isOpen) " (active)" else ""
-            text = "$time · $duration$openMarker\n$top"
+            text = line
             setTextColor(0xFFFFFFFF.toInt())
             textSize = 14f
             setPadding(dp(12), dp(12), dp(12), dp(12))

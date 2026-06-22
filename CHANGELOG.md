@@ -2,6 +2,17 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0-rc.2] — 2026-06-22
+
+ScreenTime fixes from rc.1 device testing:
+
+- **Start/Stop toggle** now flips immediately when tapped instead of waiting for
+  the service to update its state on the next screen visit.
+- **Today's sessions** load without UI jank: app-label resolution now happens off
+  the main thread instead of per row during rendering.
+- **Overlay bar** is pinned to the very top edge of the screen (over the status
+  bar) so it no longer overlaps app content.
+
 ## [v0.11.0-rc.1] — 2026-06-22
 
 Release candidate introducing the **ScreenTime** mini-app: on-device tracking of
