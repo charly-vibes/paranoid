@@ -6,10 +6,12 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.view.View
+import dev.charly.paranoid.apps.screentime.OverlayProgress
 
 /**
  * A thin horizontal progress bar drawn over all apps. Display-only; never interactive (the host
- * window uses FLAG_NOT_TOUCHABLE). [setFillFraction] sets how far the bar is filled, 0..1.
+ * window uses FLAG_NOT_TOUCHABLE). [setFillFraction] sets how far the bar is filled, 0..1. The fill
+ * colour shifts from green toward red past 70% (see [OverlayProgress.fillColor]).
  */
 @SuppressLint("ViewConstructor")
 class OverlayProgressView(context: Context) : View(context) {
@@ -20,13 +22,14 @@ class OverlayProgressView(context: Context) : View(context) {
         color = Color.parseColor("#33000000")
     }
     private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#3DDC84")
+        color = OverlayProgress.fillColor(0f)
     }
 
     fun setFillFraction(fraction: Float) {
         val clamped = fraction.coerceIn(0f, 1f)
         if (clamped != fillFraction) {
             fillFraction = clamped
+            fillPaint.color = OverlayProgress.fillColor(clamped)
             invalidate()
         }
     }

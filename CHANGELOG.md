@@ -2,6 +2,14 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0-rc.3] — 2026-06-22
+
+- **Overlay bar** now shifts colour with fill: it stays green up to 70%, then
+  ramps linearly to red, reaching full red at 100% (redder the closer to a
+  checkpoint).
+- **Website**: the ScreenTime mini-app is now listed on the project site with a
+  full functionality spec.
+
 ## [v0.11.0-rc.2] — 2026-06-22
 
 ScreenTime fixes from rc.1 device testing:
