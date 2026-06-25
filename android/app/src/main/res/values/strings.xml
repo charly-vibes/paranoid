@@ -18,6 +18,10 @@
     <string name="screentime_today_empty">No sessions recorded today yet.</string>
     <string name="screentime_start">Start monitoring</string>
     <string name="screentime_stop">Stop monitoring</string>
+    <string name="screentime_history_title">Recent days</string>
+    <string name="screentime_history_empty">No daily activity recorded yet.</string>
+    <string name="screentime_share_summary">Share summary</string>
+    <string name="screentime_export_csv">Export CSV</string>
     <string name="usage_access_enabled_title">Usage access enabled</string>
     <string name="usage_access_enabled_message">Today and Last Night reports can now query local app activity.</string>
     <string name="today_section_title">Today</string>

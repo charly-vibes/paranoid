@@ -2,6 +2,14 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0-rc.4] — 2026-06-24
+
+- **ScreenTime — daily activity & export**: the entry screen now shows a
+  "Recent days" history (each day's total screen-on time and top app), and adds
+  **Share summary** (readable text) and **Export CSV** buttons that share daily
+  activity via the Android share sheet. History and export cover as far back as
+  the 31-day session retention.
+
 ## [v0.11.0-rc.3] — 2026-06-22
 
 - **Overlay bar** now shifts colour with fill: it stays green up to 70%, then

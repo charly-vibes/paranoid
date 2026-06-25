@@ -6,6 +6,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dev.charly.paranoid.R
@@ -15,6 +16,7 @@ import dev.charly.paranoid.apps.screentime.service.ScreenTimeMonitoringPrefs
 import dev.charly.paranoid.apps.screentime.service.ScreenTimePermission
 import dev.charly.paranoid.apps.screentime.service.ScreenTimePermissions
 import dev.charly.paranoid.apps.screentime.service.ScreenTimeService
+import dev.charly.paranoid.apps.screentime.service.ScreenTimeShare
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -30,6 +32,7 @@ import kotlinx.coroutines.withContext
 class ScreenTimeActivity : AppCompatActivity() {
 
     private val timeFormat by lazy { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    private val dayFormat by lazy { SimpleDateFormat("EEE d MMM", Locale.getDefault()) }
 
     private val permissionLabels = mapOf(
         ScreenTimePermission.USAGE_ACCESS to "Usage access",
@@ -37,11 +40,17 @@ class ScreenTimeActivity : AppCompatActivity() {
         ScreenTimePermission.OVERLAY to "Display over other apps",
     )
 
+    /** Daily activity (most recent first) and resolved app labels, cached for export. */
+    private var exportHistory: List<DayUsage> = emptyList()
+    private var labelCache: Map<String, String> = emptyMap()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_screen_time)
         findViewById<TextView>(R.id.btn_back).setOnClickListener { finish() }
         findViewById<TextView>(R.id.screentime_toggle).setOnClickListener { onToggleClicked() }
+        findViewById<TextView>(R.id.screentime_share_summary).setOnClickListener { onShareSummary() }
+        findViewById<TextView>(R.id.screentime_export_csv).setOnClickListener { onExportCsv() }
     }
 
     override fun onResume() {
@@ -49,7 +58,7 @@ class ScreenTimeActivity : AppCompatActivity() {
         renderPermissions()
         renderToggle()
         renderWarning()
-        loadAndRenderSessions()
+        loadAndRender()
     }
 
     private fun onToggleClicked() {
@@ -133,25 +142,65 @@ class ScreenTimeActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadAndRenderSessions() {
+    /** Loaded view models built off the main thread. */
+    private class LoadedData(
+        val sessionLines: List<String>,
+        val historyLines: List<String>,
+        val exportHistory: List<DayUsage>,
+        val labels: Map<String, String>,
+    )
+
+    private fun loadAndRender() {
         val now = System.currentTimeMillis()
-        val dayStart = startOfToday(now)
         lifecycleScope.launch {
-            // Query and label resolution both run off the main thread; resolving app labels via
-            // PackageManager per row on the UI thread is what made the list feel laggy.
-            val lines = withContext(Dispatchers.IO) {
+            // All DB work and PackageManager label resolution happen off the main thread; resolving
+            // labels on the UI thread is what made the list feel laggy.
+            val data = withContext(Dispatchers.IO) {
                 val dao = ParanoidDatabase.getInstance(applicationContext).screenTimeDao()
-                val sessions = dao.sessionsOverlapping(dayStart, now)
+                // Load the full retention window once; derive both today's sessions and the daily
+                // history from it so we hit the DB a single time.
+                val windowStart = now - RetentionPolicy.RETENTION_DAYS * MILLIS_PER_DAY
+                val sessions = dao.sessionsOverlapping(windowStart, now)
                     .map { it.toDomain(dao.intervalsForSession(it.id)) }
-                TodaySessionsPresenter.present(sessions, now).map { row ->
+
+                // Resolve every package label once into a cache.
+                val labels = sessions
+                    .flatMap { s -> s.appIntervals.map { it.packageName } }
+                    .distinct()
+                    .associateWith { appLabel(it) }
+
+                val sessionLines = TodaySessionsPresenter.present(sessions, now).map { row ->
                     val time = timeFormat.format(Date(row.startMillis))
                     val duration = formatDuration(row.durationMillis)
                     val openMarker = if (row.isOpen) " (active)" else ""
-                    val top = row.topAppPackage?.let { appLabel(it) } ?: "—"
+                    val top = row.topAppPackage?.let { labels[it] ?: it } ?: "—"
                     "$time · $duration$openMarker\n$top"
                 }
+
+                // Display the last two weeks of days that actually have activity; export keeps the
+                // full retained window (also activity-only).
+                val displayHistory = ReportAggregator.dailyHistory(sessions, now, days = 14)
+                    .filter { it.totalForegroundMillis > 0L }
+                val exportHistory = ReportAggregator.dailyHistory(
+                    sessions, now, days = RetentionPolicy.RETENTION_DAYS.toInt(),
+                ).filter { it.totalForegroundMillis > 0L }
+
+                val historyLines = displayHistory.map { day ->
+                    val date = dayFormat.format(Date(day.startMillis))
+                    val total = formatDuration(day.totalForegroundMillis)
+                    val top = day.appsByForeground.firstOrNull()
+                        ?.let { "${labels[it.packageName] ?: it.packageName} ${formatDuration(it.foregroundMillis)}" }
+                        ?: "—"
+                    "$date · $total\n$top"
+                }
+
+                LoadedData(sessionLines, historyLines, exportHistory, labels)
             }
-            renderSessions(lines)
+
+            exportHistory = data.exportHistory
+            labelCache = data.labels
+            renderSessions(data.sessionLines)
+            renderHistory(data.historyLines)
         }
     }
 
@@ -163,6 +212,34 @@ class ScreenTimeActivity : AppCompatActivity() {
         for (line in lines) {
             container.addView(buildSessionRow(line))
         }
+    }
+
+    private fun renderHistory(lines: List<String>) {
+        val empty = findViewById<TextView>(R.id.screentime_history_empty)
+        val container = findViewById<LinearLayout>(R.id.screentime_history)
+        container.removeAllViews()
+        empty.visibility = if (lines.isEmpty()) View.VISIBLE else View.GONE
+        for (line in lines) {
+            container.addView(buildSessionRow(line))
+        }
+    }
+
+    private fun onShareSummary() {
+        if (exportHistory.isEmpty()) {
+            Toast.makeText(this, "No activity to export yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val text = ScreenTimeExport.summaryText(exportHistory) { labelCache[it] ?: it }
+        ScreenTimeShare.shareText(this, text)
+    }
+
+    private fun onExportCsv() {
+        if (exportHistory.isEmpty()) {
+            Toast.makeText(this, "No activity to export yet", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val csv = ScreenTimeExport.csv(exportHistory) { labelCache[it] ?: it }
+        ScreenTimeShare.shareCsv(this, csv, ScreenTimeExport.CSV_FILENAME)
     }
 
     private fun buildSessionRow(line: String): View {
@@ -195,15 +272,9 @@ class ScreenTimeActivity : AppCompatActivity() {
         return if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m"
     }
 
-    private fun startOfToday(nowMillis: Long): Long {
-        val cal = java.util.Calendar.getInstance()
-        cal.timeInMillis = nowMillis
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.timeInMillis
-    }
-
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+
+    private companion object {
+        private const val MILLIS_PER_DAY = 24L * 60L * 60L * 1_000L
+    }
 }

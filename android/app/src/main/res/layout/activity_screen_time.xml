@@ -105,5 +105,69 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/screentime_history_title"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/screentime_history_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/screentime_history_empty"
+            android:textColor="#CCCCCC"
+            android:textSize="14sp" />
+
+        <!-- Recent-day rows are added programmatically. -->
+        <LinearLayout
+            android:id="@+id/screentime_history"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="20dp">
+
+            <TextView
+                android:id="@+id/screentime_share_summary"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:gravity="center"
+                android:text="@string/screentime_share_summary"
+                android:textColor="#64B5F6"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:background="@drawable/app_item_bg"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <TextView
+                android:id="@+id/screentime_export_csv"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
+                android:gravity="center"
+                android:text="@string/screentime_export_csv"
+                android:textColor="#64B5F6"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:background="@drawable/app_item_bg"
+                android:padding="16dp"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

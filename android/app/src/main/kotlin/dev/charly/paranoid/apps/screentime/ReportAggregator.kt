@@ -59,6 +59,30 @@ object ReportAggregator {
         return dayUsage(sessions, monthStart, todayStart)
     }
 
+    /**
+     * Per-day usage for the last [days] local calendar days, most recent first. The first entry is
+     * today so far (its end is [nowMillis]); the rest are full past days. Used by the daily-activity
+     * history view and export.
+     */
+    fun dailyHistory(
+        sessions: List<Session>,
+        nowMillis: Long,
+        days: Int = 7,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): List<DayUsage> {
+        if (days <= 0) return emptyList()
+        val todayStart = startOfDay(nowMillis, zone)
+        val result = ArrayList<DayUsage>(days)
+        // Today is partial: [start of today, now).
+        result.add(dayUsage(sessions, todayStart, nowMillis))
+        for (offset in 1 until days) {
+            val dayStart = minusDays(todayStart, offset, zone)
+            val dayEnd = minusDays(todayStart, offset - 1, zone)
+            result.add(dayUsage(sessions, dayStart, dayEnd))
+        }
+        return result
+    }
+
     fun build(sessions: List<Session>, nowMillis: Long, zone: ZoneId = ZoneId.systemDefault()): MorningReport =
         MorningReport(
             yesterday = yesterday(sessions, nowMillis, zone),

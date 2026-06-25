@@ -10,7 +10,9 @@ On-device screen-time monitor that tracks each screen-on session, attributes per
 - Per-app attribution: sample the foreground app so each session shows where time went
 - Live awareness: an always-on-top overlay bar fills toward each checkpoint and shifts green→red past 70%
 - Checkpoints: notifications at 7, 13, and 29 minutes, then every 29 minutes within a continuous session
+- Daily activity: a recent-days history of total screen-on time and top apps per day
 - Morning report: an 08:00 summary of yesterday, the 7-day rolling average, and month-to-date totals
+- Export: share a readable summary or a CSV of daily activity via the Android share sheet
 - Offline-first: all sessions stored locally in the shared on-device database
 
 ## Non-Goals (v1)
@@ -33,7 +35,13 @@ Each permission is shown with its grant status and a deep-link button on the ent
 
 | Screen | Purpose |
 |---|---|
-| ScreenTime (entry) | Permission status with deep links, start/stop toggle, today's sessions, and a warning when a permission is revoked while monitoring |
+| ScreenTime (entry) | Permission status with deep links, start/stop toggle, today's sessions, recent-days history, export buttons, and a warning when a permission is revoked while monitoring |
+
+## Daily Activity & Export
+
+- The entry screen shows a "Recent days" history: each day's total screen-on time and its top app.
+- History (and export) are derived from stored sessions, so they cover as far back as the 31-day session retention.
+- **Share summary** sends a readable per-day text summary; **Export CSV** writes a CSV (one row per app per day) and shares it via the Android share sheet.
 
 ## How It Works
 
