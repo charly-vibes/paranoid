@@ -2,6 +2,15 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0-rc.5] — 2026-06-25
+
+- **ScreenTime — permanent daily history**: daily activity is now kept forever.
+  Each completed day is aggregated into a dedicated daily table (DB migration
+  8 → 9) that is never pruned, so history and exports survive long after the raw
+  31-day sessions are deleted. Completed days are persisted by the morning-report
+  job and as a safety net whenever the screen is opened; the view and export
+  merge the permanent records with freshly computed recent days.
+
 ## [v0.11.0-rc.4] — 2026-06-24
 
 - **ScreenTime — daily activity & export**: the entry screen now shows a

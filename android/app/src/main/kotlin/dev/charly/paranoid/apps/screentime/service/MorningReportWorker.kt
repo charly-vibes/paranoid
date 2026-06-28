@@ -17,6 +17,7 @@ import dev.charly.paranoid.apps.screentime.MorningReport
 import dev.charly.paranoid.apps.screentime.MorningReportSchedule
 import dev.charly.paranoid.apps.screentime.ReportAggregator
 import dev.charly.paranoid.apps.screentime.RetentionPolicy
+import dev.charly.paranoid.apps.screentime.persistCompletedDays
 import dev.charly.paranoid.apps.screentime.data.toDomain
 import java.util.concurrent.TimeUnit
 
@@ -41,6 +42,10 @@ class MorningReportWorker(
 
         val report = ReportAggregator.build(sessions, now)
         postReportNotification(report)
+
+        // Persist completed days permanently BEFORE pruning, so daily totals survive forever even
+        // after the raw sessions are deleted.
+        dao.persistCompletedDays(sessions, now)
 
         // Prune sessions older than the retention window (CASCADE removes their intervals).
         dao.pruneSessionsEndedBefore(RetentionPolicy.cutoffMillis(now))

@@ -15,6 +15,8 @@ import dev.charly.paranoid.apps.netdiag.data.SnapshotDao
 import dev.charly.paranoid.apps.sensorlogger.data.SensorEventDao
 import dev.charly.paranoid.apps.sensorlogger.data.SensorEventEntity
 import dev.charly.paranoid.apps.screentime.data.AppIntervalEntity
+import dev.charly.paranoid.apps.screentime.data.DailyAppUsageEntity
+import dev.charly.paranoid.apps.screentime.data.DailyUsageEntity
 import dev.charly.paranoid.apps.screentime.data.ScreenTimeDao
 import dev.charly.paranoid.apps.screentime.data.SessionEntity
 import dev.charly.paranoid.apps.sensorlogger.data.SensorSessionDao
@@ -35,8 +37,10 @@ import dev.charly.paranoid.apps.usageaudit.BatterySnapshotEntity
         SensorEventEntity::class,
         SessionEntity::class,
         AppIntervalEntity::class,
+        DailyUsageEntity::class,
+        DailyAppUsageEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class ParanoidDatabase : RoomDatabase() {
@@ -210,6 +214,32 @@ abstract class ParanoidDatabase : RoomDatabase() {
             }
         }
 
+        // Additive: adds the persistent daily-activity tables (never pruned).
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS screentime_daily_usage (
+                        dayStartMillis INTEGER NOT NULL PRIMARY KEY,
+                        dayEndMillis INTEGER NOT NULL,
+                        totalForegroundMillis INTEGER NOT NULL
+                    )"""
+                )
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS screentime_daily_app_usage (
+                        id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        dayStartMillis INTEGER NOT NULL,
+                        packageName TEXT NOT NULL,
+                        foregroundMillis INTEGER NOT NULL,
+                        FOREIGN KEY(dayStartMillis) REFERENCES screentime_daily_usage(dayStartMillis) ON DELETE CASCADE
+                    )"""
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_screentime_daily_app_usage_dayStartMillis " +
+                        "ON screentime_daily_app_usage(dayStartMillis)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): ParanoidDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -219,7 +249,7 @@ abstract class ParanoidDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6,
-                        MIGRATION_6_7, MIGRATION_7_8,
+                        MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9,
                     )
                     .build().also { instance = it }
             }

@@ -5,8 +5,10 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import dev.charly.paranoid.apps.screentime.model.AppInterval
 import dev.charly.paranoid.apps.screentime.model.Session
@@ -48,6 +50,37 @@ data class AppIntervalEntity(
 )
 
 /**
+ * A persisted daily activity summary. Unlike [SessionEntity] (pruned after 31 days), these rows are
+ * never pruned: they preserve historical daily totals forever, after the raw sessions are gone.
+ * Keyed by the local-day start (epoch millis).
+ */
+@Entity(tableName = "screentime_daily_usage")
+data class DailyUsageEntity(
+    @PrimaryKey val dayStartMillis: Long,
+    val dayEndMillis: Long,
+    val totalForegroundMillis: Long,
+)
+
+@Entity(
+    tableName = "screentime_daily_app_usage",
+    foreignKeys = [
+        ForeignKey(
+            entity = DailyUsageEntity::class,
+            parentColumns = ["dayStartMillis"],
+            childColumns = ["dayStartMillis"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("dayStartMillis")],
+)
+data class DailyAppUsageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
+    val dayStartMillis: Long,
+    val packageName: String,
+    val foregroundMillis: Long,
+)
+
+/**
  * Persistence for screen-time sessions and their per-app foreground intervals. Sessions and
  * intervals live in separate tables (one-to-many, CASCADE delete) within the shared
  * [dev.charly.paranoid.apps.netmap.data.ParanoidDatabase]; screen-time owns its own tables
@@ -82,6 +115,49 @@ interface ScreenTimeDao {
     /** Deletes closed sessions that ended before [cutoffMillis]; CASCADE removes their intervals. */
     @Query("DELETE FROM screentime_sessions WHERE endMillis IS NOT NULL AND endMillis < :cutoffMillis")
     suspend fun pruneSessionsEndedBefore(cutoffMillis: Long): Int
+
+    // --- Persistent daily activity (never pruned) ------------------------------------------------
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertDailyUsage(day: DailyUsageEntity)
+
+    @Insert
+    suspend fun insertDailyAppUsage(apps: List<DailyAppUsageEntity>)
+
+    @Query("DELETE FROM screentime_daily_app_usage WHERE dayStartMillis = :dayStartMillis")
+    suspend fun deleteDailyAppUsage(dayStartMillis: Long)
+
+    /** All persisted daily summaries, newest first. */
+    @Query("SELECT * FROM screentime_daily_usage ORDER BY dayStartMillis DESC")
+    suspend fun allDailyUsage(): List<DailyUsageEntity>
+
+    @Query("SELECT * FROM screentime_daily_app_usage WHERE dayStartMillis = :dayStartMillis ORDER BY foregroundMillis DESC")
+    suspend fun dailyAppUsage(dayStartMillis: Long): List<DailyAppUsageEntity>
+
+    /** All persisted daily app rows, newest day first, used to build history in a single query. */
+    @Query("SELECT * FROM screentime_daily_app_usage ORDER BY dayStartMillis DESC, foregroundMillis DESC")
+    suspend fun allDailyAppUsage(): List<DailyAppUsageEntity>
+
+    /**
+     * Persists one day's usage permanently in a single transaction: clear the day's old app rows,
+     * upsert the day total, then insert the current breakdown. Atomicity means concurrent callers
+     * (morning-report job and UI) can never leave duplicate or orphaned app rows — last writer wins.
+     */
+    @Transaction
+    suspend fun persistDay(
+        dayStartMillis: Long,
+        dayEndMillis: Long,
+        totalForegroundMillis: Long,
+        apps: List<Pair<String, Long>>,
+    ) {
+        deleteDailyAppUsage(dayStartMillis)
+        upsertDailyUsage(DailyUsageEntity(dayStartMillis, dayEndMillis, totalForegroundMillis))
+        insertDailyAppUsage(
+            apps.map { (pkg, millis) ->
+                DailyAppUsageEntity(dayStartMillis = dayStartMillis, packageName = pkg, foregroundMillis = millis)
+            },
+        )
+    }
 }
 
 /** Maps a stored session row plus its interval rows into a domain [Session]. */

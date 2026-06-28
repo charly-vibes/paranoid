@@ -157,17 +157,25 @@ class ScreenTimeActivity : AppCompatActivity() {
             // labels on the UI thread is what made the list feel laggy.
             val data = withContext(Dispatchers.IO) {
                 val dao = ParanoidDatabase.getInstance(applicationContext).screenTimeDao()
-                // Load the full retention window once; derive both today's sessions and the daily
+                // Load the full retention window once; derive today's sessions and the live daily
                 // history from it so we hit the DB a single time.
                 val windowStart = now - RetentionPolicy.RETENTION_DAYS * MILLIS_PER_DAY
                 val sessions = dao.sessionsOverlapping(windowStart, now)
                     .map { it.toDomain(dao.intervalsForSession(it.id)) }
 
-                // Resolve every package label once into a cache.
-                val labels = sessions
-                    .flatMap { s -> s.appIntervals.map { it.packageName } }
-                    .distinct()
-                    .associateWith { appLabel(it) }
+                // Safety net: persist completed days now, so nothing is lost even if the daily
+                // morning-report job has not run since the last completed day.
+                dao.persistCompletedDays(sessions, now)
+
+                // Daily history that survives forever: stored days merged with fresh live days.
+                val live = ReportAggregator.dailyHistory(sessions, now, days = RetentionPolicy.RETENTION_DAYS.toInt())
+                val history = DailyHistoryMerge.merge(dao.loadPersistedHistory(), live)
+
+                // Resolve every package label once into a cache (sessions + all history days).
+                val labels = (
+                    sessions.flatMap { s -> s.appIntervals.map { it.packageName } } +
+                        history.flatMap { d -> d.appsByForeground.map { it.packageName } }
+                    ).distinct().associateWith { appLabel(it) }
 
                 val sessionLines = TodaySessionsPresenter.present(sessions, now).map { row ->
                     val time = timeFormat.format(Date(row.startMillis))
@@ -177,15 +185,8 @@ class ScreenTimeActivity : AppCompatActivity() {
                     "$time · $duration$openMarker\n$top"
                 }
 
-                // Display the last two weeks of days that actually have activity; export keeps the
-                // full retained window (also activity-only).
-                val displayHistory = ReportAggregator.dailyHistory(sessions, now, days = 14)
-                    .filter { it.totalForegroundMillis > 0L }
-                val exportHistory = ReportAggregator.dailyHistory(
-                    sessions, now, days = RetentionPolicy.RETENTION_DAYS.toInt(),
-                ).filter { it.totalForegroundMillis > 0L }
-
-                val historyLines = displayHistory.map { day ->
+                // Show the most recent 14 days; export keeps the full retained history.
+                val historyLines = history.take(14).map { day ->
                     val date = dayFormat.format(Date(day.startMillis))
                     val total = formatDuration(day.totalForegroundMillis)
                     val top = day.appsByForeground.firstOrNull()
@@ -194,7 +195,7 @@ class ScreenTimeActivity : AppCompatActivity() {
                     "$date · $total\n$top"
                 }
 
-                LoadedData(sessionLines, historyLines, exportHistory, labels)
+                LoadedData(sessionLines, historyLines, history, labels)
             }
 
             exportHistory = data.exportHistory

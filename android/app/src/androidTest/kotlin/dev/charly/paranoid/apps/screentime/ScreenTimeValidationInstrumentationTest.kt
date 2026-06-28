@@ -17,6 +17,17 @@ package dev.charly.paranoid.apps.screentime
  *   - report aggregation + scheduling: ReportAggregatorTest, MorningReportScheduleTest
  *   - retention/pruning cutoff: RetentionPolicyTest
  *   - today list: TodaySessionsPresenterTest
+ *   - export text/CSV: ScreenTimeExportTest
+ *   - daily history + permanent merge: ReportAggregatorDailyHistoryTest, DailyHistoryMergeTest
+ *
+ * Additional device-only case worth running when an emulator is available:
+ *
+ * 6. room_migration_8_to_9_adds_daily_tables_without_data_loss
+ *    - GIVEN a v8 paranoid.db populated with screentime sessions/intervals
+ *    - WHEN the database is opened and MIGRATION_8_9 runs
+ *    - THEN screentime_daily_usage and screentime_daily_app_usage exist, existing
+ *      sessions/intervals are intact, and ScreenTimeDao.persistDay/loadPersistedHistory round-trip.
+ *    Tip: use androidx.room.testing.MigrationTestHelper with the exported schema.
  *
  * Intended cases:
  *

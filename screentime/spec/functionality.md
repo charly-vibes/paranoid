@@ -40,7 +40,8 @@ Each permission is shown with its grant status and a deep-link button on the ent
 ## Daily Activity & Export
 
 - The entry screen shows a "Recent days" history: each day's total screen-on time and its top app.
-- History (and export) are derived from stored sessions, so they cover as far back as the 31-day session retention.
+- Daily totals are **kept permanently**: each completed day is aggregated into a dedicated daily table that is never pruned, so history survives long after the raw 31-day sessions are deleted. Completed days are persisted by the morning-report job and, as a safety net, whenever the screen is opened.
+- The history and export merge the permanent daily records with freshly computed recent days (and today), so nothing is double-counted or lost.
 - **Share summary** sends a readable per-day text summary; **Export CSV** writes a CSV (one row per app per day) and shares it via the Android share sheet.
 
 ## How It Works
@@ -48,7 +49,7 @@ Each permission is shown with its grant status and a deep-link button on the ent
 - A foreground service keeps monitoring alive and survives reboots (restarted via a boot receiver).
 - Screen on/off is tracked with a 30-second screen-off debounce, so brief blips don't split a session.
 - The foreground app is sampled every 5 seconds to build per-app intervals within each session.
-- Sessions and their per-app intervals persist in the shared on-device Room database.
+- Sessions and their per-app intervals persist in the shared on-device Room database; raw sessions are pruned after 31 days, but the aggregated daily activity is kept permanently.
 
 ## Overlay Bar
 
