@@ -2,6 +2,24 @@
 
 All notable changes to Paranoid are documented here.
 
+## [v0.11.0] — 2026-06-30
+
+- **New mini-app: ScreenTime** — a privacy-first screen-time monitor. Tracks
+  screen-on sessions locally, shows today's sessions, and surfaces usage with a
+  pinned top-edge overlay bar that ramps from green to red as you approach a
+  checkpoint (full red at 100%).
+- **Daily activity, kept forever**: each completed day is aggregated into
+  dedicated daily tables that are never pruned, so history survives long after
+  the raw 31-day sessions are deleted.
+- **Export**: share a readable daily summary or export CSV via the Android share
+  sheet.
+- **Morning report**: a background worker persists completed days and prepares a
+  daily report.
+- **Website**: the ScreenTime mini-app is listed on the project site with a full
+  functionality spec.
+
+This stable release consolidates the rc.1–rc.5 ScreenTime work below.
+
 ## [v0.11.0-rc.5] — 2026-06-25
 
 - **ScreenTime — permanent daily history**: daily activity is now kept forever.
