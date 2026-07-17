@@ -159,3 +159,8 @@ context before starting research or creating tickets.
 > **Before research or ticket creation**: always run `wai search "<topic>"` to
 > check for known patterns. Do not rediscover what is already documented.
 <!-- WAI:REFLECT:REF:END -->
+
+## Git & Workflow Discipline
+
+- **Never use `git add -A`** — always stage specific files with explicit paths
+- **Per-ticket pipeline**: always follow `TDD → ro5u → fix → commit → next ticket`
