@@ -1,0 +1,6 @@
+id = "dns-on-api-26-28-fallback"
+description = ""
+archetype = "PF"
+status = "active"
+superseded_by = ""
+authored_with = "0.1.0"
