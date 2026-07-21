@@ -127,6 +127,10 @@ test:
     just _gradle test
     @echo "✓ Tests passed"
 
+# Validate spec-test correspondence (requires ah)
+validate:
+    ah check
+
 # Run lint checks
 lint:
     just _gradle lint
